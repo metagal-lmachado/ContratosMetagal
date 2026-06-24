@@ -473,10 +473,13 @@ function atualizarDashboard() {
 function atualizarKpis() {
     const total = dadosFiltrados.reduce((s, d) => s + d.preco_total_linha, 0);
     const qtd = dadosFiltrados.length;
+    const contratosDistintos = new Set(
+        dadosFiltrados.map(d => d.contrato).filter(c => c)
+    ).size;
     const ticket = qtd > 0 ? total / qtd : 0;
 
     document.getElementById('total-valor').textContent = formatarMoeda(total);
-    document.getElementById('total-lancamentos').textContent = qtd.toLocaleString('pt-BR');
+    document.getElementById('total-contratos').textContent = contratosDistintos.toLocaleString('pt-BR');
     document.getElementById('ticket-medio').textContent = formatarMoeda(ticket);
 
     const statusMap = { Ativo: 0, 'Concluído': 0, Concluido: 0 };
