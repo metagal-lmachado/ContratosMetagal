@@ -472,15 +472,14 @@ function atualizarDashboard() {
 
 function atualizarKpis() {
     const total = dadosFiltrados.reduce((s, d) => s + d.preco_total_linha, 0);
-    const qtd = dadosFiltrados.length;
     const contratosDistintos = new Set(
         dadosFiltrados.map(d => d.contrato).filter(c => c)
     ).size;
-    const ticket = qtd > 0 ? total / qtd : 0;
+    const prazoMedio = calcularPrazoMedioPonderado(dadosFiltrados);
 
     document.getElementById('total-valor').textContent = formatarMoeda(total);
     document.getElementById('total-contratos').textContent = contratosDistintos.toLocaleString('pt-BR');
-    document.getElementById('ticket-medio').textContent = formatarMoeda(ticket);
+    document.getElementById('prazo-medio').textContent = formatarPrazo(prazoMedio);
 
     const statusMap = { Ativo: 0, 'Concluído': 0, Concluido: 0 };
     dadosFiltrados.forEach(d => {
@@ -782,6 +781,44 @@ function exportarXlsx() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Lançamentos');
     XLSX.writeFile(wb, `contratos_metagal_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+function parsePrazoPagamento(cond) {
+    if (!cond) return null;
+    const texto = String(cond).trim().toUpperCase();
+    if (!texto) return null;
+    if (texto.includes('VISTA')) return 0;
+
+    const numeros = texto.match(/\d+/g);
+    if (!numeros?.length) return null;
+
+    const dias = numeros.map(Number);
+    return dias.reduce((s, n) => s + n, 0) / dias.length;
+}
+
+function calcularPrazoMedioPonderado(registros) {
+    let somaPonderada = 0;
+    let somaValor = 0;
+
+    registros.forEach(d => {
+        const prazo = parsePrazoPagamento(d.cond_pagamento);
+        const valor = d.preco_total_linha;
+        if (prazo === null || valor <= 0) return;
+        somaPonderada += prazo * valor;
+        somaValor += valor;
+    });
+
+    return somaValor > 0 ? somaPonderada / somaValor : null;
+}
+
+function formatarPrazo(dias) {
+    if (dias === null) return '—';
+    const valor = new Intl.NumberFormat('pt-BR', {
+        maximumFractionDigits: 1,
+        minimumFractionDigits: Number.isInteger(dias) ? 0 : 1
+    }).format(dias);
+    const unidade = Math.round(dias) === 1 ? 'dia' : 'dias';
+    return `${valor} ${unidade}`;
 }
 
 function formatarMoeda(v) {
