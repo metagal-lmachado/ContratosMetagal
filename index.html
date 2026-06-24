@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contratos Metagal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <div class="brand">
+                    <span class="brand-icon">M</span>
+                    <span class="brand-text">metagal</span>
+                </div>
+                <button class="btn-icon sidebar-collapse" id="btn-collapse-sidebar" title="Recolher barra lateral">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="lancamentos">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-label">Lançamentos</span>
+                </a>
+            </nav>
+
+            <div class="filters-panel open" id="filters-panel">
+                <button class="filters-panel-header" id="btn-toggle-filters" type="button">
+                    <span class="filters-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        Filtros
+                    </span>
+                    <span class="filters-chevron">▾</span>
+                </button>
+                <div class="filters-panel-body">
+                    <div class="filter-group">
+                        <label class="filter-label" for="filter-date-start">Período — De</label>
+                        <input type="date" id="filter-date-start" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label" for="filter-date-end">Até</label>
+                        <input type="date" id="filter-date-end" class="filter-input">
+                    </div>
+                    <div class="filter-actions">
+                        <button type="button" class="btn btn-primary btn-sm" id="btn-aplicar-periodo">Aplicar</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="btn-limpar-periodo">Limpar</button>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label" for="filter-estabelecimento">Estabelecimento</label>
+                        <select id="filter-estabelecimento" class="filter-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label" for="filter-status">Status do Contrato</label>
+                        <select id="filter-status" class="filter-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label" for="filter-departamento">Departamento</label>
+                        <select id="filter-departamento" class="filter-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label" for="filter-depto-compras">Depto de Compras</label>
+                        <select id="filter-depto-compras" class="filter-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label" for="filter-gestao">Gestão</label>
+                        <select id="filter-gestao" class="filter-select">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label" for="filter-curva">Curva</label>
+                        <select id="filter-curva" class="filter-select">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-block" id="btn-reset-filtros">Limpar Filtros</button>
+                </div>
+            </div>
+
+            <div class="sidebar-modalidades">
+                <div class="modalidades-card">
+                    <div class="modalidades-header">
+                        <h3>Status</h3>
+                        <div class="toggle-group">
+                            <button type="button" class="toggle-btn active" id="btn-status-quantidade">Qtd</button>
+                            <button type="button" class="toggle-btn" id="btn-status-valor">Valor</button>
+                        </div>
+                    </div>
+                    <div class="modalidade-items">
+                        <div class="modalidade-item">
+                            <span>Ativo</span>
+                            <strong id="status-ativo">0</strong>
+                        </div>
+                        <div class="modalidade-item">
+                            <span>Concluído</span>
+                            <strong id="status-concluido">0</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <header class="header">
+                <div class="header-left">
+                    <h1 class="page-title">Contratos Metagal</h1>
+                    <span class="loading-badge hidden" id="loading-badge">Carregando...</span>
+                </div>
+                <div class="header-right">
+                    <div class="search-box">
+                        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <input type="text" id="search-global" class="search-input" placeholder="Buscar...">
+                    </div>
+                    <label class="btn btn-secondary btn-file" title="Carregar DADOS.csv manualmente">
+                        📂 CSV
+                        <input type="file" id="input-csv" accept=".csv" hidden>
+                    </label>
+                    <button type="button" class="btn btn-primary" id="btn-reload">↻ Recarregar</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <section id="page-dashboard" class="page active">
+                    <div class="kpi-row" id="kpi-row">
+                        <article class="kpi-card">
+                            <div class="kpi-header">
+                                <span class="kpi-label">Valor Total</span>
+                                <span class="kpi-icon">💰</span>
+                            </div>
+                            <div class="kpi-value" id="total-valor">R$ 0,00</div>
+                        </article>
+                        <article class="kpi-card">
+                            <div class="kpi-header">
+                                <span class="kpi-label">Total de Lançamentos</span>
+                                <span class="kpi-icon">📌</span>
+                            </div>
+                            <div class="kpi-value" id="total-lancamentos">0</div>
+                            <span class="kpi-sub">Número de linhas</span>
+                        </article>
+                        <article class="kpi-card">
+                            <div class="kpi-header">
+                                <span class="kpi-label">Ticket Médio</span>
+                                <span class="kpi-icon">📈</span>
+                            </div>
+                            <div class="kpi-value" id="ticket-medio">R$ 0,00</div>
+                            <span class="kpi-sub">Valor médio por linha</span>
+                        </article>
+                    </div>
+
+                    <div class="active-filters hidden" id="active-filters"></div>
+
+                    <div class="charts-grid">
+                        <div class="chart-card chart-half">
+                            <h3 class="chart-title">Distribuição por Status</h3>
+                            <p class="chart-hint">Clique em uma fatia para filtrar</p>
+                            <div class="chart-wrap chart-wrap-pie">
+                                <canvas id="chart-status"></canvas>
+                            </div>
+                            <div class="chart-legend" id="legend-status"></div>
+                        </div>
+
+                        <div class="chart-card chart-half">
+                            <h3 class="chart-title">Valor por Estabelecimento</h3>
+                            <p class="chart-hint">Clique em uma fatia para filtrar</p>
+                            <div class="chart-wrap chart-wrap-pie">
+                                <canvas id="chart-estabelecimento"></canvas>
+                            </div>
+                            <div class="chart-legend" id="legend-estabelecimento"></div>
+                        </div>
+
+                        <div class="chart-card chart-half">
+                            <h3 class="chart-title">Valor por Departamento</h3>
+                            <p class="chart-hint">Top 10 — clique na barra para filtrar</p>
+                            <div class="chart-wrap">
+                                <canvas id="chart-departamentos"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card chart-half">
+                            <h3 class="chart-title">Valor por Depto de Compras</h3>
+                            <p class="chart-hint">Top 10 — clique na barra para filtrar</p>
+                            <div class="chart-wrap">
+                                <canvas id="chart-depto-compras"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card chart-half">
+                            <h3 class="chart-title">Valor por Gestão</h3>
+                            <p class="chart-hint">Top 10 — clique na barra para filtrar</p>
+                            <div class="chart-wrap">
+                                <canvas id="chart-gestao"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card chart-half">
+                            <h3 class="chart-title">Valor por Curva</h3>
+                            <p class="chart-hint">Clique na barra para filtrar</p>
+                            <div class="chart-wrap">
+                                <canvas id="chart-curva"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card chart-full">
+                            <h3 class="chart-title">Valor por Mês</h3>
+                            <p class="chart-hint">Clique em um ponto para filtrar o mês</p>
+                            <div class="chart-wrap chart-wrap-line">
+                                <canvas id="chart-mensal"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="page-lancamentos" class="page">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <h2>Detalhamento de Lançamentos</h2>
+                            <div class="table-actions">
+                                <input type="text" id="search-lancamentos" class="search-input" placeholder="Buscar lançamento...">
+                                <button type="button" class="btn btn-secondary" id="btn-export">Exportar XLSX</button>
+                            </div>
+                        </div>
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Nota Fiscal</th>
+                                        <th>Fornecedor</th>
+                                        <th>Contrato</th>
+                                        <th>Status</th>
+                                        <th>Depto Compras</th>
+                                        <th>Departamento</th>
+                                        <th>Gestão</th>
+                                        <th>Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <button type="button" class="btn btn-secondary" id="btn-prev" disabled>← Anterior</button>
+                            <span id="pagination-info">Página 1 de 1</span>
+                            <button type="button" class="btn btn-secondary" id="btn-next" disabled>Próxima →</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
