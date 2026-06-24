@@ -552,6 +552,33 @@ body {
     gap: 20px;
 }
 
+.charts-top {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 20px;
+    align-items: stretch;
+}
+
+.chart-departamentos-tall {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.chart-estabelecimento {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.chart-depto-compras {
+    grid-column: 2;
+    grid-row: 2;
+}
+
 .chart-card {
     background: var(--card);
     border-radius: 14px;
@@ -593,6 +620,12 @@ body {
 .chart-wrap {
     position: relative;
     height: 300px;
+}
+
+.chart-wrap-tall {
+    flex: 1;
+    min-height: 620px;
+    height: auto;
 }
 
 .chart-wrap-pie { height: 280px; display: flex; justify-content: center; }
@@ -724,6 +757,18 @@ body {
 
 @media (max-width: 1200px) {
     .charts-grid { grid-template-columns: 1fr; }
+    .charts-top {
+        grid-column: span 1;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+    .chart-departamentos-tall,
+    .chart-estabelecimento,
+    .chart-depto-compras {
+        grid-column: 1;
+        grid-row: auto;
+    }
+    .chart-wrap-tall { min-height: 480px; }
     .chart-half, .chart-full { grid-column: span 1; }
     .kpi-row { grid-template-columns: 1fr; }
 }

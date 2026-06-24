@@ -168,37 +168,30 @@
                     <div class="active-filters hidden" id="active-filters"></div>
 
                     <div class="charts-grid">
-                        <div class="chart-card chart-half">
-                            <h3 class="chart-title">Distribuição por Status</h3>
-                            <p class="chart-hint">Clique em uma fatia para filtrar</p>
-                            <div class="chart-wrap chart-wrap-pie">
-                                <canvas id="chart-status"></canvas>
+                        <div class="charts-top">
+                            <div class="chart-card chart-departamentos-tall">
+                                <h3 class="chart-title">Valor por Departamento</h3>
+                                <p class="chart-hint">Todos os departamentos — clique na barra para filtrar</p>
+                                <div class="chart-wrap chart-wrap-tall">
+                                    <canvas id="chart-departamentos"></canvas>
+                                </div>
                             </div>
-                            <div class="chart-legend" id="legend-status"></div>
-                        </div>
 
-                        <div class="chart-card chart-half">
-                            <h3 class="chart-title">Valor por Estabelecimento</h3>
-                            <p class="chart-hint">Clique em uma fatia para filtrar</p>
-                            <div class="chart-wrap chart-wrap-pie">
-                                <canvas id="chart-estabelecimento"></canvas>
+                            <div class="chart-card chart-estabelecimento">
+                                <h3 class="chart-title">Valor por Estabelecimento</h3>
+                                <p class="chart-hint">Clique em uma fatia para filtrar</p>
+                                <div class="chart-wrap chart-wrap-pie">
+                                    <canvas id="chart-estabelecimento"></canvas>
+                                </div>
+                                <div class="chart-legend" id="legend-estabelecimento"></div>
                             </div>
-                            <div class="chart-legend" id="legend-estabelecimento"></div>
-                        </div>
 
-                        <div class="chart-card chart-half">
-                            <h3 class="chart-title">Valor por Departamento</h3>
-                            <p class="chart-hint">Top 10 — clique na barra para filtrar</p>
-                            <div class="chart-wrap">
-                                <canvas id="chart-departamentos"></canvas>
-                            </div>
-                        </div>
-
-                        <div class="chart-card chart-half">
-                            <h3 class="chart-title">Valor por Depto de Compras</h3>
-                            <p class="chart-hint">Top 10 — clique na barra para filtrar</p>
-                            <div class="chart-wrap">
-                                <canvas id="chart-depto-compras"></canvas>
+                            <div class="chart-card chart-depto-compras">
+                                <h3 class="chart-title">Valor por Depto de Compras</h3>
+                                <p class="chart-hint">Top 10 — clique na barra para filtrar</p>
+                                <div class="chart-wrap">
+                                    <canvas id="chart-depto-compras"></canvas>
+                                </div>
                             </div>
                         </div>
 

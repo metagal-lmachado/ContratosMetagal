@@ -3,11 +3,6 @@ Chart.register(ChartDataLabels);
 const PAGE_SIZE = 20;
 const CSV_PATH = 'DADOS.csv';
 
-const CORES_STATUS = {
-    'Ativo': '#388e3c',
-    'Concluído': '#1976d2',
-    'Concluido': '#1976d2'
-};
 const CORES_ESTABELECIMENTO = {
     VIES: '#2d5016',
     SRS: '#4caf50',
@@ -461,9 +456,8 @@ function toggleFiltroSelect(id, valor) {
 
 function atualizarDashboard() {
     atualizarKpis();
-    atualizarGraficoPizza('status', 'status_do_contrato', 'chart-status', 'legend-status', 'filter-status', CORES_STATUS);
     atualizarGraficoPizza('estabelecimento', 'estabelecimento', 'chart-estabelecimento', 'legend-estabelecimento', 'filter-estabelecimento', CORES_ESTABELECIMENTO);
-    atualizarGraficoBarras('departamentos', 'departamento', 'chart-departamentos', 10, 'filter-departamento');
+    atualizarGraficoBarras('departamentos', 'departamento', 'chart-departamentos', null, 'filter-departamento');
     atualizarGraficoBarras('deptoCompras', 'depto_de_compras', 'chart-depto-compras', 10, 'filter-depto-compras');
     atualizarGraficoBarras('gestao', 'gestao', 'chart-gestao', 10, 'filter-gestao');
     atualizarGraficoBarras('curva', 'curva', 'chart-curva', 10, 'filter-curva');
@@ -560,15 +554,22 @@ function atualizarGraficoPizza(chave, campo, canvasId, legendId, filtroId, palet
 }
 
 function atualizarGraficoBarras(chave, campo, canvasId, limite, filtroId) {
-    const agrupado = agruparPor(campo).slice(0, limite);
+    const agrupado = limite ? agruparPor(campo).slice(0, limite) : agruparPor(campo);
     const labels = agrupado.map(([k]) => k);
     const valores = agrupado.map(([, v]) => v);
     const cores = labels.map((_, i) => CORES_BARRAS[i % CORES_BARRAS.length]);
 
     destruirChart(chave);
     const canvas = document.getElementById(canvasId);
-    const altura = Math.max(260, labels.length * 28);
-    canvas.parentElement.style.height = altura + 'px';
+    const wrap = canvas.parentElement;
+
+    if (chave === 'departamentos') {
+        wrap.style.height = '';
+        wrap.style.flex = '1';
+    } else {
+        wrap.style.flex = '';
+        wrap.style.height = Math.max(260, labels.length * 28) + 'px';
+    }
 
     charts[chave] = new Chart(canvas.getContext('2d'), {
         type: 'bar',
