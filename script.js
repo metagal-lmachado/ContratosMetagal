@@ -85,6 +85,7 @@ function inicializarEventos() {
 
     document.getElementById('search-lancamentos').addEventListener('input', filtrarTabela);
     document.getElementById('btn-export').addEventListener('click', exportarXlsx);
+    document.getElementById('btn-export-tabela').addEventListener('click', exportarTabelaContratosXlsx);
     document.getElementById('btn-prev').addEventListener('click', () => mudarPaginaTabela(-1));
     document.getElementById('btn-next').addEventListener('click', () => mudarPaginaTabela(1));
 
@@ -419,6 +420,7 @@ function aplicarFiltros() {
     atualizarChipsFiltros();
     atualizarDashboard();
     atualizarAnalise();
+    atualizarTabelaContratos();
     atualizarTabela();
 }
 
@@ -778,14 +780,21 @@ function mudarPaginaTabela(delta) {
 function mudarPagina(pagina) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === pagina));
     document.getElementById('page-analise').classList.toggle('active', pagina === 'analise');
+    document.getElementById('page-tabela').classList.toggle('active', pagina === 'tabela');
     document.getElementById('page-dashboard').classList.toggle('active', pagina === 'dashboard');
     document.getElementById('page-lancamentos').classList.toggle('active', pagina === 'lancamentos');
 
-    const titulos = { dashboard: 'Contratos Metagal', analise: 'Análise por Departamento', lancamentos: 'Lançamentos' };
+    const titulos = {
+        dashboard: 'Contratos Metagal',
+        analise: 'Análise por Departamento',
+        tabela: 'Tabela de Contratos',
+        lancamentos: 'Lançamentos'
+    };
     document.querySelector('.page-title').textContent = titulos[pagina] || 'Contratos Metagal';
 
     if (pagina === 'lancamentos') atualizarTabela();
     if (pagina === 'analise') atualizarAnalise();
+    if (pagina === 'tabela') atualizarTabelaContratos();
 }
 
 function obterDadosBaseAnalise() {
@@ -997,6 +1006,213 @@ function atualizarAnalise() {
             <span class="analise-legend-valor">${formatarMoedaCompacta(item.valor)} (${pct}%)</span>
         </div>`;
     }).join('');
+}
+
+function formatarLabelMes(data) {
+    const mes = data.toLocaleString('pt-BR', { month: 'short' })
+        .replace('.', '')
+        .trim()
+        .slice(0, 3)
+        .toLowerCase();
+    const ano = String(data.getFullYear()).slice(-2);
+    return `${mes}-${ano}`;
+}
+
+function obterMesesDoPeriodo(registros) {
+    let inicio = periodoInicio;
+    let fim = periodoFim;
+
+    if (!inicio || !fim) {
+        const datas = registros.map(d => parseDataFiscal(d.data_fiscal)).filter(Boolean).sort((a, b) => a - b);
+        if (!datas.length) return [];
+        inicio = inicio || datas[0];
+        fim = fim || datas[datas.length - 1];
+    }
+
+    inicio = new Date(inicio.getFullYear(), inicio.getMonth(), 1);
+    fim = new Date(fim.getFullYear(), fim.getMonth(), 1);
+
+    const meses = [];
+    let atual = new Date(inicio);
+    while (atual <= fim) {
+        const chave = `${atual.getFullYear()}-${String(atual.getMonth() + 1).padStart(2, '0')}`;
+        meses.push({ chave, label: formatarLabelMes(atual), data: new Date(atual) });
+        atual = new Date(atual.getFullYear(), atual.getMonth() + 1, 1);
+    }
+    return meses;
+}
+
+function obterLabelColunaTotal(meses) {
+    if (!meses.length) return 'Total';
+    const anos = [...new Set(meses.map(m => m.chave.split('-')[0]))];
+    return anos.length === 1 ? anos[0] : 'Total';
+}
+
+function formatarValorCelula(valor) {
+    if (!valor) return '-';
+    return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function escolherPrincipal(mapa) {
+    const entrada = Object.entries(mapa).sort((a, b) => b[1] - a[1])[0];
+    return entrada ? entrada[0] : '';
+}
+
+function montarDadosTabelaContratos(registros) {
+    const meses = obterMesesDoPeriodo(registros);
+    const mapa = {};
+
+    registros.forEach(d => {
+        const contrato = d.contrato;
+        if (!contrato) return;
+
+        const data = parseDataFiscal(d.data_fiscal);
+        if (!data) return;
+
+        const chaveMes = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+        if (!meses.some(m => m.chave === chaveMes)) return;
+
+        if (!mapa[contrato]) {
+            mapa[contrato] = {
+                contrato,
+                descricao_fornecedor: '',
+                departamento: '',
+                meses: {},
+                total: 0,
+                fornecedorValor: {},
+                departamentoValor: {}
+            };
+        }
+
+        const linha = mapa[contrato];
+        linha.meses[chaveMes] = (linha.meses[chaveMes] || 0) + d.preco_total_linha;
+        linha.total += d.preco_total_linha;
+
+        const forn = d.descricao_fornecedor || 'Não informado';
+        linha.fornecedorValor[forn] = (linha.fornecedorValor[forn] || 0) + d.preco_total_linha;
+
+        const dept = d.departamento || 'Não informado';
+        linha.departamentoValor[dept] = (linha.departamentoValor[dept] || 0) + d.preco_total_linha;
+    });
+
+    const linhas = Object.values(mapa).map(linha => {
+        linha.descricao_fornecedor = escolherPrincipal(linha.fornecedorValor);
+        linha.departamento = escolherPrincipal(linha.departamentoValor);
+        delete linha.fornecedorValor;
+        delete linha.departamentoValor;
+        return linha;
+    }).sort((a, b) => b.total - a.total);
+
+    const totaisMes = {};
+    meses.forEach(m => { totaisMes[m.chave] = 0; });
+    let totalGeral = 0;
+
+    linhas.forEach(linha => {
+        meses.forEach(m => {
+            totaisMes[m.chave] += linha.meses[m.chave] || 0;
+        });
+        totalGeral += linha.total;
+    });
+
+    return { meses, linhas, totaisMes, totalGeral, labelTotal: obterLabelColunaTotal(meses) };
+}
+
+function formatarPeriodoExibicao(meses) {
+    if (!meses.length) return '—';
+    const primeiro = meses[0].data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const ultimo = meses[meses.length - 1].data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return `${primeiro} a ${ultimo}`;
+}
+
+function atualizarTabelaContratos() {
+    const thead = document.getElementById('tabela-contratos-head');
+    const tbody = document.getElementById('tabela-contratos-body');
+    const info = document.getElementById('tabela-periodo-info');
+    const { meses, linhas, totaisMes, totalGeral, labelTotal } = montarDadosTabelaContratos(dadosFiltrados);
+
+    info.textContent = `Período: ${formatarPeriodoExibicao(meses)}`;
+
+    if (!meses.length) {
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:#64748b">Nenhum dado para o período selecionado</td></tr>';
+        return;
+    }
+
+    const colsMes = meses.map(m =>
+        `<th class="col-num">${esc(m.label)}</th>`
+    ).join('');
+
+    const totaisMesHtml = meses.map(m =>
+        `<th class="col-num">${formatarValorCelula(totaisMes[m.chave])}</th>`
+    ).join('');
+
+    thead.innerHTML = `
+        <tr class="tabela-total-row">
+            <th class="col-fixa" colspan="3">TOTAL</th>
+            ${totaisMesHtml}
+            <th class="col-num col-total">${formatarValorCelula(totalGeral)}</th>
+        </tr>
+        <tr class="tabela-header-row">
+            <th class="col-fixa">contrato</th>
+            <th class="col-fixa-2">descricao_fornecedor</th>
+            <th class="col-fixa-3">departamento</th>
+            ${colsMes}
+            <th class="col-num">${esc(labelTotal)}</th>
+        </tr>
+    `;
+
+    if (!linhas.length) {
+        tbody.innerHTML = `<tr><td colspan="${meses.length + 4}" style="text-align:center;padding:32px;color:#64748b">Nenhum contrato encontrado</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = linhas.map(linha => {
+        const cols = meses.map(m => {
+            const valor = linha.meses[m.chave] || 0;
+            const cls = valor ? 'col-num' : 'col-num col-vazio';
+            return `<td class="${cls}">${formatarValorCelula(valor)}</td>`;
+        }).join('');
+
+        return `<tr>
+            <td class="col-fixa">${esc(linha.contrato)}</td>
+            <td class="col-fixa-2 col-fornecedor" title="${esc(linha.descricao_fornecedor)}">${esc(linha.descricao_fornecedor)}</td>
+            <td class="col-fixa-3">${esc(linha.departamento)}</td>
+            ${cols}
+            <td class="col-num col-total">${formatarValorCelula(linha.total)}</td>
+        </tr>`;
+    }).join('');
+}
+
+function exportarTabelaContratosXlsx() {
+    const { meses, linhas, totaisMes, totalGeral, labelTotal } = montarDadosTabelaContratos(dadosFiltrados);
+    if (!meses.length) return;
+
+    const header = ['contrato', 'descricao_fornecedor', 'departamento', ...meses.map(m => m.label), labelTotal];
+    const totalRow = {
+        contrato: 'TOTAL',
+        descricao_fornecedor: '',
+        departamento: '',
+        ...Object.fromEntries(meses.map(m => [m.label, totaisMes[m.chave] || 0])),
+        [labelTotal]: totalGeral
+    };
+
+    const rows = linhas.map(linha => {
+        const row = {
+            contrato: linha.contrato,
+            descricao_fornecedor: linha.descricao_fornecedor,
+            departamento: linha.departamento
+        };
+        meses.forEach(m => {
+            row[m.label] = linha.meses[m.chave] || 0;
+        });
+        row[labelTotal] = linha.total;
+        return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet([totalRow, ...rows], { header });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Contratos');
+    XLSX.writeFile(wb, `tabela_contratos_${new Date().toISOString().split('T')[0]}.xlsx`);
 }
 
 function exportarXlsx() {

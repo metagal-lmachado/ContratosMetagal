@@ -30,6 +30,10 @@
                     <span class="nav-icon">📈</span>
                     <span class="nav-label">Análise</span>
                 </a>
+                <a href="#" class="nav-item" data-page="tabela">
+                    <span class="nav-icon">📑</span>
+                    <span class="nav-label">Tabela</span>
+                </a>
                 <a href="#" class="nav-item" data-page="lancamentos">
                     <span class="nav-icon">📋</span>
                     <span class="nav-label">Lançamentos</span>
@@ -184,6 +188,26 @@
                                 <span class="analise-ref" id="analise-ref">ref: —</span>
                                 <span class="analise-brand">metagal</span>
                             </footer>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="page-tabela" class="page">
+                    <div class="table-card tabela-contratos-card">
+                        <div class="table-header">
+                            <div>
+                                <h2>Tabela de Contratos por Mês</h2>
+                                <p class="tabela-periodo-info" id="tabela-periodo-info">Período: —</p>
+                            </div>
+                            <div class="table-actions">
+                                <button type="button" class="btn btn-secondary" id="btn-export-tabela">Exportar XLSX</button>
+                            </div>
+                        </div>
+                        <div class="table-scroll tabela-contratos-scroll">
+                            <table class="data-table tabela-contratos" id="tabela-contratos">
+                                <thead id="tabela-contratos-head"></thead>
+                                <tbody id="tabela-contratos-body"></tbody>
+                            </table>
                         </div>
                     </div>
                 </section>
