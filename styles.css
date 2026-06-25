@@ -92,19 +92,31 @@ body {
 .brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    min-width: 0;
+    flex: 1;
 }
 
-.brand-icon {
-    width: 36px;
-    height: 36px;
-    background: var(--green-light);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
+.brand-logo {
+    height: 34px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    display: block;
+    background: #fff;
+    border-radius: 6px;
+    padding: 4px 10px;
+    box-sizing: content-box;
+}
+
+.sidebar.collapsed .brand-logo {
+    height: 28px;
+    max-width: 48px;
+    object-fit: contain;
+    object-position: left center;
+}
+
+.sidebar.collapsed .brand {
     justify-content: center;
-    font-weight: 700;
-    font-size: 1.1rem;
 }
 
 .brand-text {
