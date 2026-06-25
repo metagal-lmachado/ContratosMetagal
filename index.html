@@ -23,13 +23,13 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" data-page="analise">
-                    <span class="nav-icon">📈</span>
-                    <span class="nav-label">Análise</span>
-                </a>
-                <a href="#" class="nav-item" data-page="dashboard">
+                <a href="#" class="nav-item active" data-page="dashboard">
                     <span class="nav-icon">📊</span>
                     <span class="nav-label">Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="analise">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-label">Análise</span>
                 </a>
                 <a href="#" class="nav-item" data-page="lancamentos">
                     <span class="nav-icon">📋</span>
@@ -142,30 +142,27 @@
             </header>
 
             <div class="content">
-                <section id="page-analise" class="page active">
+                <section id="page-analise" class="page">
                     <div class="analise-report">
                         <div class="analise-toolbar">
                             <div class="analise-select-group">
                                 <label class="analise-select-label" for="filter-analise-departamento">Departamento</label>
                                 <select id="filter-analise-departamento" class="analise-select">
-                                    <option value="">Selecione um departamento...</option>
+                                    <option value="__TODOS__">Todos os departamentos</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div class="analise-empty hidden" id="analise-empty">
-                            <p>Selecione um departamento acima para visualizar o relatório de contratos.</p>
-                        </div>
-
-                        <div class="analise-content hidden" id="analise-content">
+                        <div class="analise-content" id="analise-content">
                             <header class="analise-header">
                                 <h2 class="analise-title" id="analise-title">REPORT</h2>
                                 <div class="analise-divider"></div>
                             </header>
 
                             <div class="analise-kpis">
-                                <div class="analise-kpi">
+                                <div class="analise-kpi analise-kpi-left">
                                     <span class="analise-kpi-line">Representa <strong id="analise-pct-total">—</strong> do total</span>
+                                    <span class="analise-kpi-subline" id="analise-pareto-fornecedores">—</span>
                                 </div>
                                 <div class="analise-kpi analise-kpi-center">
                                     <strong class="analise-kpi-value analise-kpi-valor" id="analise-valor-total">R$ 0,00</strong>
@@ -192,7 +189,7 @@
                     </div>
                 </section>
 
-                <section id="page-dashboard" class="page">
+                <section id="page-dashboard" class="page active">
                     <div class="kpi-row" id="kpi-row">
                         <article class="kpi-card">
                             <div class="kpi-header">

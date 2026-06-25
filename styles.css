@@ -805,6 +805,26 @@ body {
     box-shadow: 0 0 0 3px rgba(76,175,80,0.15);
 }
 
+.analise-kpi-left {
+    align-items: flex-start;
+    text-align: left;
+}
+
+.analise-kpi-subline {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin-top: 8px;
+    text-transform: none;
+    letter-spacing: normal;
+    max-width: 360px;
+}
+
+.analise-kpi-subline strong {
+    color: var(--green);
+    font-weight: 700;
+}
+
 .analise-empty {
     text-align: center;
     padding: 80px 20px;
@@ -995,7 +1015,9 @@ body {
     .kpi-row { grid-template-columns: 1fr; }
     .analise-chart-area { grid-template-columns: 1fr; }
     .analise-kpis { grid-template-columns: 1fr; gap: 16px; }
+    .analise-kpi-left,
     .analise-kpi-right { align-items: center; text-align: center; }
+    .analise-kpi-subline { max-width: none; }
     .analise-pie-wrap { height: 380px; }
 }
 

@@ -344,14 +344,19 @@ function preencherFiltros() {
 function preencherSelectAnalise(id, opcoes) {
     const select = document.getElementById(id);
     const atual = select.value;
-    select.innerHTML = '<option value="">Selecione um departamento...</option>';
+    select.innerHTML = '<option value="__TODOS__">Todos os departamentos</option>';
     opcoes.forEach(op => {
         const opt = document.createElement('option');
         opt.value = op;
         opt.textContent = op;
         select.appendChild(opt);
     });
-    if ([...select.options].some(o => o.value === atual)) select.value = atual;
+
+    if ([...select.options].some(o => o.value === atual)) {
+        select.value = atual;
+    } else {
+        select.value = '__TODOS__';
+    }
 }
 
 function uniq(campo) {
@@ -776,7 +781,7 @@ function mudarPagina(pagina) {
     document.getElementById('page-dashboard').classList.toggle('active', pagina === 'dashboard');
     document.getElementById('page-lancamentos').classList.toggle('active', pagina === 'lancamentos');
 
-    const titulos = { analise: 'Análise por Departamento', dashboard: 'Contratos Metagal', lancamentos: 'Lançamentos' };
+    const titulos = { dashboard: 'Contratos Metagal', analise: 'Análise por Departamento', lancamentos: 'Lançamentos' };
     document.querySelector('.page-title').textContent = titulos[pagina] || 'Contratos Metagal';
 
     if (pagina === 'lancamentos') atualizarTabela();
@@ -857,23 +862,59 @@ function formatarMoedaCompacta(v) {
     return 'R$ ' + Math.round(v).toLocaleString('pt-BR');
 }
 
-function atualizarAnalise() {
-    const departamento = document.getElementById('filter-analise-departamento').value;
-    const emptyEl = document.getElementById('analise-empty');
-    const contentEl = document.getElementById('analise-content');
+function calcularParetoFornecedores(registros) {
+    const mapa = {};
+    registros.forEach(d => {
+        const forn = d.descricao_fornecedor || d.pn_fornecedor || '';
+        if (!forn) return;
+        mapa[forn] = (mapa[forn] || 0) + d.preco_total_linha;
+    });
 
-    if (!departamento) {
-        emptyEl.classList.remove('hidden');
-        contentEl.classList.add('hidden');
-        destruirChart('analiseContratos');
-        return;
+    const fornecedores = Object.values(mapa).sort((a, b) => b - a);
+    const totalFornecedores = fornecedores.length;
+    const faturamentoTotal = fornecedores.reduce((s, v) => s + v, 0);
+
+    if (!totalFornecedores || faturamentoTotal <= 0) {
+        return { totalFornecedores: 0, count80: 0, count20: 0 };
     }
 
-    emptyEl.classList.add('hidden');
-    contentEl.classList.remove('hidden');
+    const limite80 = faturamentoTotal * 0.8;
+    let acumulado = 0;
+    let count80 = 0;
 
+    for (const valor of fornecedores) {
+        acumulado += valor;
+        count80++;
+        if (acumulado >= limite80) break;
+    }
+
+    return {
+        totalFornecedores,
+        count80,
+        count20: totalFornecedores - count80
+    };
+}
+
+function formatarParetoFornecedores(pareto) {
+    if (!pareto.totalFornecedores) return 'Sem fornecedores no período filtrado.';
+
+    const pct80 = ((pareto.count80 / pareto.totalFornecedores) * 100).toFixed(1);
+    const pct20 = ((pareto.count20 / pareto.totalFornecedores) * 100).toFixed(1);
+
+    return `De <strong>${pareto.totalFornecedores.toLocaleString('pt-BR')}</strong> fornecedores: `
+        + `<strong>${pareto.count80.toLocaleString('pt-BR')}</strong> (${pct80}%) concentram 80% do faturamento · `
+        + `<strong>${pareto.count20.toLocaleString('pt-BR')}</strong> (${pct20}%) compõem os 20% restantes`;
+}
+
+function obterDadosAnaliseDepartamento(dadosBase, departamento) {
+    if (departamento === '__TODOS__') return dadosBase;
+    return dadosBase.filter(d => d.departamento === departamento);
+}
+
+function atualizarAnalise() {
+    const departamento = document.getElementById('filter-analise-departamento').value || '__TODOS__';
     const dadosBase = obterDadosBaseAnalise();
-    const dadosDept = dadosBase.filter(d => d.departamento === departamento);
+    const dadosDept = obterDadosAnaliseDepartamento(dadosBase, departamento);
 
     const valorTotalGeral = dadosBase.reduce((s, d) => s + d.preco_total_linha, 0);
     const valorDept = dadosDept.reduce((s, d) => s + d.preco_total_linha, 0);
@@ -881,9 +922,15 @@ function atualizarAnalise() {
     const qtdContratos = new Set(dadosDept.map(d => d.contrato).filter(Boolean)).size;
     const meses = obterMesesNoPeriodo(dadosDept);
     const valorMensal = valorDept / meses;
+    const pareto = calcularParetoFornecedores(dadosDept);
 
-    document.getElementById('analise-title').textContent = `REPORT ${departamento}`;
+    const titulo = departamento === '__TODOS__'
+        ? 'REPORT GERAL'
+        : `REPORT ${departamento}`;
+
+    document.getElementById('analise-title').textContent = titulo;
     document.getElementById('analise-pct-total').textContent = `${Math.round(pctTotal)}%`;
+    document.getElementById('analise-pareto-fornecedores').innerHTML = formatarParetoFornecedores(pareto);
     document.getElementById('analise-valor-total').textContent = formatarMoeda(valorMensal);
     document.getElementById('analise-qtd-contratos').textContent = qtdContratos.toLocaleString('pt-BR');
     document.getElementById('analise-ref').textContent = obterRefPeriodo(dadosDept);
