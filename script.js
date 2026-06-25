@@ -87,6 +87,8 @@ function inicializarEventos() {
     document.getElementById('btn-export').addEventListener('click', exportarXlsx);
     document.getElementById('btn-prev').addEventListener('click', () => mudarPaginaTabela(-1));
     document.getElementById('btn-next').addEventListener('click', () => mudarPaginaTabela(1));
+
+    document.getElementById('filter-analise-departamento').addEventListener('change', atualizarAnalise);
 }
 
 async function carregarDados() {
@@ -336,6 +338,20 @@ function preencherFiltros() {
     preencherSelect('filter-depto-compras', uniq('depto_de_compras'));
     preencherSelect('filter-gestao', uniq('gestao'));
     preencherSelect('filter-curva', uniq('curva'));
+    preencherSelectAnalise('filter-analise-departamento', uniq('departamento'));
+}
+
+function preencherSelectAnalise(id, opcoes) {
+    const select = document.getElementById(id);
+    const atual = select.value;
+    select.innerHTML = '<option value="">Selecione um departamento...</option>';
+    opcoes.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        select.appendChild(opt);
+    });
+    if ([...select.options].some(o => o.value === atual)) select.value = atual;
 }
 
 function uniq(campo) {
@@ -397,6 +413,7 @@ function aplicarFiltros() {
     paginaAtual = 1;
     atualizarChipsFiltros();
     atualizarDashboard();
+    atualizarAnalise();
     atualizarTabela();
 }
 
@@ -755,9 +772,184 @@ function mudarPaginaTabela(delta) {
 
 function mudarPagina(pagina) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === pagina));
+    document.getElementById('page-analise').classList.toggle('active', pagina === 'analise');
     document.getElementById('page-dashboard').classList.toggle('active', pagina === 'dashboard');
     document.getElementById('page-lancamentos').classList.toggle('active', pagina === 'lancamentos');
+
+    const titulos = { analise: 'Análise por Departamento', dashboard: 'Contratos Metagal', lancamentos: 'Lançamentos' };
+    document.querySelector('.page-title').textContent = titulos[pagina] || 'Contratos Metagal';
+
     if (pagina === 'lancamentos') atualizarTabela();
+    if (pagina === 'analise') atualizarAnalise();
+}
+
+function obterDadosBaseAnalise() {
+    const estabelecimento = document.getElementById('filter-estabelecimento').value;
+    const status = document.getElementById('filter-status').value;
+    const deptoCompras = document.getElementById('filter-depto-compras').value;
+    const gestao = document.getElementById('filter-gestao').value;
+    const curva = document.getElementById('filter-curva').value;
+    const busca = document.getElementById('search-global').value.trim().toLowerCase();
+
+    return dados.filter(d => {
+        if (estabelecimento && d.estabelecimento !== estabelecimento) return false;
+        if (status && d.status_do_contrato !== status) return false;
+        if (deptoCompras && d.depto_de_compras !== deptoCompras) return false;
+        if (gestao && d.gestao !== gestao) return false;
+        if (curva && d.curva !== curva) return false;
+
+        if (busca) {
+            const texto = [
+                d.nota_fiscal, d.estabelecimento, d.descricao_fornecedor,
+                d.contrato, d.status_do_contrato, d.depto_de_compras,
+                d.departamento, d.gestao, d.curva, d.numero_processo
+            ].join(' ').toLowerCase();
+            if (!texto.includes(busca)) return false;
+        }
+
+        if (periodoInicio || periodoFim) {
+            const data = parseDataFiscal(d.data_fiscal);
+            if (!data) return false;
+            if (periodoInicio && data < periodoInicio) return false;
+            if (periodoFim && data > periodoFim) return false;
+        }
+
+        return true;
+    });
+}
+
+function agruparContratosComFornecedor(registros) {
+    const mapa = {};
+    registros.forEach(d => {
+        const contrato = d.contrato || 'Não informado';
+        if (contrato === 'Não informado') return;
+        if (!mapa[contrato]) mapa[contrato] = { valor: 0, fornecedores: {} };
+        mapa[contrato].valor += d.preco_total_linha;
+        const forn = d.descricao_fornecedor || 'Não informado';
+        mapa[contrato].fornecedores[forn] = (mapa[contrato].fornecedores[forn] || 0) + d.preco_total_linha;
+    });
+
+    return Object.entries(mapa).map(([contrato, info]) => {
+        const fornecedor = Object.entries(info.fornecedores).sort((a, b) => b[1] - a[1])[0][0];
+        return { contrato, fornecedor, valor: info.valor };
+    }).sort((a, b) => b.valor - a.valor);
+}
+
+function obterMesesNoPeriodo(registros) {
+    const meses = new Set();
+    registros.forEach(d => {
+        const data = parseDataFiscal(d.data_fiscal);
+        if (!data) return;
+        meses.add(`${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`);
+    });
+    return meses.size || 1;
+}
+
+function obterRefPeriodo(registros) {
+    const datas = registros.map(d => parseDataFiscal(d.data_fiscal)).filter(Boolean).sort((a, b) => b - a);
+    if (!datas.length) return '—';
+    const ref = datas[0];
+    const mes = ref.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+    return `ref:${mes}`;
+}
+
+function formatarMoedaCompacta(v) {
+    return 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+}
+
+function atualizarAnalise() {
+    const departamento = document.getElementById('filter-analise-departamento').value;
+    const emptyEl = document.getElementById('analise-empty');
+    const contentEl = document.getElementById('analise-content');
+
+    if (!departamento) {
+        emptyEl.classList.remove('hidden');
+        contentEl.classList.add('hidden');
+        destruirChart('analiseContratos');
+        return;
+    }
+
+    emptyEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+
+    const dadosBase = obterDadosBaseAnalise();
+    const dadosDept = dadosBase.filter(d => d.departamento === departamento);
+
+    const valorTotalGeral = dadosBase.reduce((s, d) => s + d.preco_total_linha, 0);
+    const valorDept = dadosDept.reduce((s, d) => s + d.preco_total_linha, 0);
+    const pctTotal = valorTotalGeral > 0 ? (valorDept / valorTotalGeral) * 100 : 0;
+    const qtdContratos = new Set(dadosDept.map(d => d.contrato).filter(Boolean)).size;
+    const meses = obterMesesNoPeriodo(dadosDept);
+    const valorMensal = valorDept / meses;
+
+    document.getElementById('analise-title').textContent = `REPORT ${departamento}`;
+    document.getElementById('analise-pct-total').textContent = `${Math.round(pctTotal)}%`;
+    document.getElementById('analise-valor-total').textContent = formatarMoeda(valorMensal);
+    document.getElementById('analise-qtd-contratos').textContent = qtdContratos.toLocaleString('pt-BR');
+    document.getElementById('analise-ref').textContent = obterRefPeriodo(dadosDept);
+
+    const contratos = agruparContratosComFornecedor(dadosDept);
+    const top10 = contratos.slice(0, 10);
+    const resto = contratos.slice(10).reduce((s, c) => s + c.valor, 0);
+
+    const items = [...top10];
+    if (resto > 0) {
+        items.push({ contrato: 'OUTROS', fornecedor: `${contratos.length - 10} contratos restantes`, valor: resto });
+    }
+
+    const labels = items.map(i => i.contrato);
+    const valores = items.map(i => i.valor);
+    const total = valores.reduce((s, v) => s + v, 0);
+    const cores = items.map((_, i) => CORES_BARRAS[i % CORES_BARRAS.length]);
+
+    destruirChart('analiseContratos');
+    const ctx = document.getElementById('chart-analise-contratos').getContext('2d');
+    charts.analiseContratos = new Chart(ctx, {
+        type: 'pie',
+        data: { labels, datasets: [{ data: valores, backgroundColor: cores, borderWidth: 2, borderColor: '#fff' }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: 'bold', size: 11 },
+                    formatter: (v, ctx) => {
+                        if (total <= 0) return '';
+                        const pct = Math.round((v / total) * 100);
+                        return `${formatarMoedaCompacta(v)} ; ${pct}%`;
+                    },
+                    display: ctx => ctx.dataset.data[ctx.dataIndex] > 0
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const item = items[ctx.dataIndex];
+                            const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                            return [
+                                `${item.contrato} — ${item.fornecedor}`,
+                                `${formatarMoeda(ctx.raw)} (${pct}%)`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    const legendEl = document.getElementById('legend-analise-contratos');
+    legendEl.innerHTML = items.map((item, i) => {
+        const pct = total > 0 ? ((item.valor / total) * 100).toFixed(0) : 0;
+        return `<div class="analise-legend-item">
+            <span class="analise-legend-dot" style="background:${cores[i]}"></span>
+            <div class="analise-legend-text">
+                <span class="analise-legend-contrato">${esc(item.contrato)}</span>
+                <span class="analise-legend-fornecedor">${esc(item.fornecedor)}</span>
+            </div>
+            <span class="analise-legend-valor">${formatarMoedaCompacta(item.valor)} (${pct}%)</span>
+        </div>`;
+    }).join('');
 }
 
 function exportarXlsx() {
