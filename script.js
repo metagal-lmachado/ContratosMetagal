@@ -90,6 +90,7 @@ function inicializarEventos() {
     document.getElementById('btn-next').addEventListener('click', () => mudarPaginaTabela(1));
 
     document.getElementById('filter-analise-departamento').addEventListener('change', atualizarAnalise);
+    document.getElementById('calendario-ano').addEventListener('change', atualizarCalendario);
 }
 
 async function carregarDados() {
@@ -423,6 +424,7 @@ function aplicarFiltros() {
     atualizarDashboard();
     atualizarAnalise();
     atualizarTabelaContratos();
+    atualizarCalendario();
     atualizarTabela();
 }
 
@@ -783,6 +785,7 @@ function mudarPagina(pagina) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === pagina));
     document.getElementById('page-analise').classList.toggle('active', pagina === 'analise');
     document.getElementById('page-tabela').classList.toggle('active', pagina === 'tabela');
+    document.getElementById('page-calendario').classList.toggle('active', pagina === 'calendario');
     document.getElementById('page-dashboard').classList.toggle('active', pagina === 'dashboard');
     document.getElementById('page-lancamentos').classList.toggle('active', pagina === 'lancamentos');
 
@@ -790,6 +793,7 @@ function mudarPagina(pagina) {
         dashboard: 'Contratos Metagal',
         analise: 'Análise por Departamento',
         tabela: 'Tabela de Contratos',
+        calendario: 'Calendário de Vencimentos',
         lancamentos: 'Lançamentos'
     };
     document.querySelector('.page-title').textContent = titulos[pagina] || 'Contratos Metagal';
@@ -797,6 +801,7 @@ function mudarPagina(pagina) {
     if (pagina === 'lancamentos') atualizarTabela();
     if (pagina === 'analise') atualizarAnalise();
     if (pagina === 'tabela') atualizarTabelaContratos();
+    if (pagina === 'calendario') atualizarCalendario();
 }
 
 function obterDadosBaseAnalise() {
@@ -1233,6 +1238,186 @@ function exportarTabelaContratosXlsx() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Contratos');
     XLSX.writeFile(wb, `tabela_contratos_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+const MESES_CALENDARIO = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+];
+
+function obterRegistrosSemFiltroPeriodo() {
+    const estabelecimento = document.getElementById('filter-estabelecimento').value;
+    const status = document.getElementById('filter-status').value;
+    const departamento = document.getElementById('filter-departamento').value;
+    const deptoCompras = document.getElementById('filter-depto-compras').value;
+    const gestao = document.getElementById('filter-gestao').value;
+    const curva = document.getElementById('filter-curva').value;
+    const busca = document.getElementById('search-global').value.trim().toLowerCase();
+
+    return dados.filter(d => {
+        if (estabelecimento && d.estabelecimento !== estabelecimento) return false;
+        if (status && d.status_do_contrato !== status) return false;
+        if (departamento && d.departamento !== departamento) return false;
+        if (deptoCompras && d.depto_de_compras !== deptoCompras) return false;
+        if (gestao && d.gestao !== gestao) return false;
+        if (curva && d.curva !== curva) return false;
+
+        if (busca) {
+            const texto = [
+                d.nota_fiscal, d.estabelecimento, d.descricao_fornecedor,
+                d.contrato, d.status_do_contrato, d.depto_de_compras,
+                d.departamento, d.gestao, d.curva, d.numero_processo
+            ].join(' ').toLowerCase();
+            if (!texto.includes(busca)) return false;
+        }
+
+        return true;
+    });
+}
+
+function isContratoAtivo(status) {
+    return Boolean(status && String(status).toLowerCase().includes('ativo'));
+}
+
+function calcularValorMedioMensalContrato(registros) {
+    if (!registros.length) return 0;
+    const total = registros.reduce((s, d) => s + d.preco_total_linha, 0);
+    const meses = new Set();
+    registros.forEach(d => {
+        const data = parseDataFiscal(d.data_fiscal);
+        if (data) meses.add(`${data.getFullYear()}-${data.getMonth()}`);
+    });
+    return meses.size ? total / meses.size : 0;
+}
+
+function montarMapaValorMedioMensal(registros) {
+    const mapa = {};
+    registros.forEach(d => {
+        if (!d.contrato) return;
+        if (!mapa[d.contrato]) mapa[d.contrato] = [];
+        mapa[d.contrato].push(d);
+    });
+
+    const resultado = {};
+    Object.entries(mapa).forEach(([contrato, linhas]) => {
+        resultado[contrato] = calcularValorMedioMensalContrato(linhas);
+    });
+    return resultado;
+}
+
+function montarPerfisContratosCalendario(registros) {
+    const mapa = {};
+
+    registros.forEach(d => {
+        if (!d.contrato) return;
+
+        if (!mapa[d.contrato]) {
+            mapa[d.contrato] = { vencimentoValor: {}, statusValor: {} };
+        }
+
+        if (d.vencimento) {
+            mapa[d.contrato].vencimentoValor[d.vencimento] =
+                (mapa[d.contrato].vencimentoValor[d.vencimento] || 0) + 1;
+        }
+        if (d.status_do_contrato) {
+            mapa[d.contrato].statusValor[d.status_do_contrato] =
+                (mapa[d.contrato].statusValor[d.status_do_contrato] || 0) + 1;
+        }
+    });
+
+    return Object.entries(mapa).map(([contrato, info]) => ({
+        contrato,
+        vencimento: parseDataFiscal(escolherPrincipal(info.vencimentoValor)),
+        status: escolherPrincipal(info.statusValor)
+    }));
+}
+
+function obterAnosVencimentoDisponiveis(perfis) {
+    const anos = new Set();
+    perfis.forEach(p => {
+        if (p.vencimento && isContratoAtivo(p.status)) {
+            anos.add(p.vencimento.getFullYear());
+        }
+    });
+    return [...anos].sort((a, b) => b - a);
+}
+
+function montarDadosCalendario(ano) {
+    const base = obterRegistrosSemFiltroPeriodo();
+    const perfis = montarPerfisContratosCalendario(base);
+    const valorMedioMap = montarMapaValorMedioMensal(dadosFiltrados);
+
+    const meses = MESES_CALENDARIO.map((nome, idx) => ({
+        nome,
+        mes: idx,
+        contratos: 0,
+        valor: 0
+    }));
+
+    perfis.forEach(perfil => {
+        if (!isContratoAtivo(perfil.status)) return;
+        if (!perfil.vencimento || perfil.vencimento.getFullYear() !== ano) return;
+
+        const slot = meses[perfil.vencimento.getMonth()];
+        slot.contratos += 1;
+        slot.valor += valorMedioMap[perfil.contrato] || 0;
+    });
+
+    const totalContratos = meses.reduce((s, m) => s + m.contratos, 0);
+    const totalValor = meses.reduce((s, m) => s + m.valor, 0);
+
+    return { meses, totalContratos, totalValor };
+}
+
+function renderizarBlocoMes(mes) {
+    return `<table class="calendario-mes">
+        <tr><th class="calendario-mes-nome" colspan="2">${esc(mes.nome)}</th></tr>
+        <tr>
+            <th class="calendario-mes-label">CONTRATOS</th>
+            <th class="calendario-mes-label">VALOR</th>
+        </tr>
+        <tr>
+            <td class="calendario-mes-qtd">${mes.contratos.toLocaleString('pt-BR')}</td>
+            <td class="calendario-mes-valor">${formatarValorCalendario(mes.valor)}</td>
+        </tr>
+    </table>`;
+}
+
+function atualizarCalendario() {
+    const grid = document.getElementById('calendario-grid');
+    const totalEl = document.getElementById('calendario-total');
+    const selectAno = document.getElementById('calendario-ano');
+    if (!grid || !totalEl || !selectAno) return;
+
+    const anoSelecionado = Number(selectAno.value) || new Date().getFullYear();
+    const base = obterRegistrosSemFiltroPeriodo();
+    const perfis = montarPerfisContratosCalendario(base);
+    const anos = obterAnosVencimentoDisponiveis(perfis);
+
+    selectAno.innerHTML = anos.length
+        ? anos.map(ano => `<option value="${ano}">${ano}</option>`).join('')
+        : `<option value="${new Date().getFullYear()}">${new Date().getFullYear()}</option>`;
+
+    const ano = anos.includes(anoSelecionado) ? anoSelecionado : (anos[0] || new Date().getFullYear());
+    selectAno.value = String(ano);
+
+    const { meses, totalContratos, totalValor } = montarDadosCalendario(ano);
+
+    grid.innerHTML = meses.map(renderizarBlocoMes).join('');
+    totalEl.innerHTML = `
+        <tr><th class="calendario-mes-nome" colspan="2">TOTAL</th></tr>
+        <tr>
+            <td class="calendario-mes-qtd">${totalContratos.toLocaleString('pt-BR')}</td>
+            <td class="calendario-mes-valor">${formatarValorCalendario(totalValor)}</td>
+        </tr>
+    `;
+}
+
+function formatarValorCalendario(valor) {
+    return Number(valor || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
 function exportarXlsx() {

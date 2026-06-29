@@ -1198,6 +1198,116 @@ body {
     vertical-align: super;
 }
 
+/* Calendário de vencimentos */
+.calendario-card {
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 24px;
+    max-width: 980px;
+}
+
+.calendario-toolbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.calendario-toolbar h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.calendario-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.calendario-select-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.calendario-select-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.calendario-select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: #fff;
+    min-width: 100px;
+}
+
+.calendario-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.calendario-mes {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--text);
+    font-size: 0.88rem;
+    table-layout: fixed;
+}
+
+.calendario-mes th,
+.calendario-mes td {
+    border: 1px solid var(--text);
+    padding: 10px 8px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.calendario-mes .calendario-mes-nome {
+    font-weight: 600;
+    text-transform: lowercase;
+    background: #fff;
+    font-size: 0.95rem;
+}
+
+.calendario-mes .calendario-mes-label {
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    background: #fff;
+}
+
+.calendario-mes .calendario-mes-valor {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.calendario-mes .calendario-mes-qtd {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.calendario-total-wrap {
+    margin-top: 20px;
+    max-width: 320px;
+}
+
+.calendario-total .calendario-mes-nome {
+    text-transform: uppercase;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
 @media (max-width: 1200px) {
     .charts-grid { grid-template-columns: 1fr; }
     .charts-top {
@@ -1220,6 +1330,7 @@ body {
     .analise-kpi-right { align-items: center; text-align: center; }
     .analise-kpi-subline { max-width: none; }
     .analise-pie-wrap { height: 380px; }
+    .calendario-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 768px) {
@@ -1229,4 +1340,6 @@ body {
     .content { padding: 0 16px 16px; }
     .search-box, .table-actions .search-input { width: 100%; }
     .header-right { width: 100%; flex-wrap: wrap; }
+    .calendario-grid { grid-template-columns: 1fr; }
+    .calendario-total-wrap { max-width: none; }
 }

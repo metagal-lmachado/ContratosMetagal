@@ -34,6 +34,10 @@
                     <span class="nav-icon">📑</span>
                     <span class="nav-label">Tabela</span>
                 </a>
+                <a href="#" class="nav-item" data-page="calendario">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-label">Calendário</span>
+                </a>
                 <a href="#" class="nav-item" data-page="lancamentos">
                     <span class="nav-icon">📋</span>
                     <span class="nav-label">Lançamentos</span>
@@ -291,6 +295,25 @@
                             <div class="chart-wrap chart-wrap-line">
                                 <canvas id="chart-mensal"></canvas>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="page-calendario" class="page">
+                    <div class="calendario-card">
+                        <div class="calendario-toolbar">
+                            <div>
+                                <h2>Calendário de Vencimentos</h2>
+                                <p class="calendario-subtitle">Contratos ativos por mês de vencimento</p>
+                            </div>
+                            <div class="calendario-select-group">
+                                <label class="calendario-select-label" for="calendario-ano">Ano</label>
+                                <select id="calendario-ano" class="calendario-select"></select>
+                            </div>
+                        </div>
+                        <div class="calendario-grid" id="calendario-grid"></div>
+                        <div class="calendario-total-wrap">
+                            <table class="calendario-mes calendario-total" id="calendario-total"></table>
                         </div>
                     </div>
                 </section>
