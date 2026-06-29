@@ -847,6 +847,12 @@ body {
     left: 330px;
     z-index: 8;
     background: var(--green-dark);
+}
+
+.tabela-contratos thead tr.tabela-header-row th.col-fixa-4 {
+    left: 480px;
+    z-index: 8;
+    background: var(--green-dark);
     box-shadow: 4px 0 8px rgba(15, 23, 42, 0.12);
 }
 
@@ -872,6 +878,14 @@ body {
     z-index: 1;
     background: inherit;
     min-width: 150px;
+}
+
+.tabela-contratos tbody .col-fixa-4 {
+    position: sticky;
+    left: 480px;
+    z-index: 1;
+    background: inherit;
+    min-width: 100px;
     box-shadow: 4px 0 8px rgba(15, 23, 42, 0.06);
 }
 
@@ -892,13 +906,15 @@ body {
 
 .tabela-contratos tbody tr:nth-child(even) .col-fixa,
 .tabela-contratos tbody tr:nth-child(even) .col-fixa-2,
-.tabela-contratos tbody tr:nth-child(even) .col-fixa-3 {
+.tabela-contratos tbody tr:nth-child(even) .col-fixa-3,
+.tabela-contratos tbody tr:nth-child(even) .col-fixa-4 {
     background: var(--green-pale);
 }
 
 .tabela-contratos tbody tr:nth-child(odd) .col-fixa,
 .tabela-contratos tbody tr:nth-child(odd) .col-fixa-2,
-.tabela-contratos tbody tr:nth-child(odd) .col-fixa-3 {
+.tabela-contratos tbody tr:nth-child(odd) .col-fixa-3,
+.tabela-contratos tbody tr:nth-child(odd) .col-fixa-4 {
     background: #fff;
 }
 
@@ -908,7 +924,8 @@ body {
 
 .tabela-contratos tbody tr:hover .col-fixa,
 .tabela-contratos tbody tr:hover .col-fixa-2,
-.tabela-contratos tbody tr:hover .col-fixa-3 {
+.tabela-contratos tbody tr:hover .col-fixa-3,
+.tabela-contratos tbody tr:hover .col-fixa-4 {
     background: #f1f8f1;
 }
 
@@ -927,6 +944,10 @@ body {
     max-width: 280px;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tabela-contratos tbody td.col-vencimento {
     white-space: nowrap;
 }
 

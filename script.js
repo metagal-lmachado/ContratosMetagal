@@ -196,6 +196,7 @@ function mapearColunas(cabecalho) {
         numero_processo: buscar('numero_processo'),
         contrato: buscar('Contrato', 'contrato'),
         status_do_contrato: buscar('status_do_contrato'),
+        vencimento: buscar('vencimento'),
         depto_de_compras: buscar('depto_de_compras'),
         quantidade_unidade_estoque: buscar('quantidade_unidade_estoque'),
         preco_total_linha: buscar('preco_total_linha'),
@@ -244,6 +245,7 @@ function normalizarRegistro(partes, mapa) {
         numero_processo: valorColuna(partes, mapa.numero_processo),
         contrato: valorColuna(partes, mapa.contrato),
         status_do_contrato: status,
+        vencimento: valorColuna(partes, mapa.vencimento),
         depto_de_compras: valorColuna(partes, mapa.depto_de_compras),
         quantidade_unidade_estoque: parseNumero(valorColuna(partes, mapa.quantidade_unidade_estoque)),
         preco_total_linha: parseNumero(valorColuna(partes, mapa.preco_total_linha)),
@@ -1077,10 +1079,12 @@ function montarDadosTabelaContratos(registros) {
                 contrato,
                 descricao_fornecedor: '',
                 departamento: '',
+                vencimento: '',
                 meses: {},
                 total: 0,
                 fornecedorValor: {},
-                departamentoValor: {}
+                departamentoValor: {},
+                vencimentoValor: {}
             };
         }
 
@@ -1093,13 +1097,19 @@ function montarDadosTabelaContratos(registros) {
 
         const dept = d.departamento || 'Não informado';
         linha.departamentoValor[dept] = (linha.departamentoValor[dept] || 0) + d.preco_total_linha;
+
+        if (d.vencimento) {
+            linha.vencimentoValor[d.vencimento] = (linha.vencimentoValor[d.vencimento] || 0) + 1;
+        }
     });
 
     const linhas = Object.values(mapa).map(linha => {
         linha.descricao_fornecedor = escolherPrincipal(linha.fornecedorValor);
         linha.departamento = escolherPrincipal(linha.departamentoValor);
+        linha.vencimento = formatarDataExibicao(escolherPrincipal(linha.vencimentoValor));
         delete linha.fornecedorValor;
         delete linha.departamentoValor;
+        delete linha.vencimentoValor;
         return linha;
     }).sort((a, b) => b.total - a.total);
 
@@ -1115,6 +1125,12 @@ function montarDadosTabelaContratos(registros) {
     });
 
     return { meses, linhas, totaisMes, totalGeral, labelTotal: obterLabelColunaTotal(meses) };
+}
+
+function formatarDataExibicao(valor) {
+    if (!valor) return '';
+    const data = parseDataFiscal(valor);
+    return data ? data.toLocaleDateString('pt-BR') : valor;
 }
 
 function formatarPeriodoExibicao(meses) {
@@ -1134,7 +1150,7 @@ function atualizarTabelaContratos() {
 
     if (!meses.length) {
         thead.innerHTML = '';
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:#64748b">Nenhum dado para o período selecionado</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:#64748b">Nenhum dado para o período selecionado</td></tr>';
         return;
     }
 
@@ -1148,7 +1164,7 @@ function atualizarTabelaContratos() {
 
     thead.innerHTML = `
         <tr class="tabela-total-row">
-            <th class="col-fixa" colspan="3">TOTAL</th>
+            <th class="col-fixa" colspan="4">TOTAL</th>
             ${totaisMesHtml}
             <th class="col-num col-total">${formatarValorCelula(totalGeral)}</th>
         </tr>
@@ -1156,13 +1172,14 @@ function atualizarTabelaContratos() {
             <th class="col-fixa">contrato</th>
             <th class="col-fixa-2">descricao_fornecedor</th>
             <th class="col-fixa-3">departamento</th>
+            <th class="col-fixa-4">vencimento</th>
             ${colsMes}
             <th class="col-num">${esc(labelTotal)}</th>
         </tr>
     `;
 
     if (!linhas.length) {
-        tbody.innerHTML = `<tr><td colspan="${meses.length + 4}" style="text-align:center;padding:32px;color:#64748b">Nenhum contrato encontrado</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${meses.length + 5}" style="text-align:center;padding:32px;color:#64748b">Nenhum contrato encontrado</td></tr>`;
         return;
     }
 
@@ -1177,6 +1194,7 @@ function atualizarTabelaContratos() {
             <td class="col-fixa">${esc(linha.contrato)}</td>
             <td class="col-fixa-2 col-fornecedor" title="${esc(linha.descricao_fornecedor)}">${esc(linha.descricao_fornecedor)}</td>
             <td class="col-fixa-3">${esc(linha.departamento)}</td>
+            <td class="col-fixa-4 col-vencimento">${esc(linha.vencimento)}</td>
             ${cols}
             <td class="col-num col-total">${formatarValorCelula(linha.total)}</td>
         </tr>`;
@@ -1187,11 +1205,12 @@ function exportarTabelaContratosXlsx() {
     const { meses, linhas, totaisMes, totalGeral, labelTotal } = montarDadosTabelaContratos(dadosFiltrados);
     if (!meses.length) return;
 
-    const header = ['contrato', 'descricao_fornecedor', 'departamento', ...meses.map(m => m.label), labelTotal];
+    const header = ['contrato', 'descricao_fornecedor', 'departamento', 'vencimento', ...meses.map(m => m.label), labelTotal];
     const totalRow = {
         contrato: 'TOTAL',
         descricao_fornecedor: '',
         departamento: '',
+        vencimento: '',
         ...Object.fromEntries(meses.map(m => [m.label, totaisMes[m.chave] || 0])),
         [labelTotal]: totalGeral
     };
@@ -1200,7 +1219,8 @@ function exportarTabelaContratosXlsx() {
         const row = {
             contrato: linha.contrato,
             descricao_fornecedor: linha.descricao_fornecedor,
-            departamento: linha.departamento
+            departamento: linha.departamento,
+            vencimento: linha.vencimento
         };
         meses.forEach(m => {
             row[m.label] = linha.meses[m.chave] || 0;
