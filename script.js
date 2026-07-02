@@ -36,6 +36,8 @@ let statusMode = 'quantidade';
 let periodoInicio = null;
 let periodoFim = null;
 let charts = {};
+const CALENDARIO_ANO_TODOS = 'todos';
+let calendarioMesSelecionado = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     inicializarEventos();
@@ -90,7 +92,18 @@ function inicializarEventos() {
     document.getElementById('btn-next').addEventListener('click', () => mudarPaginaTabela(1));
 
     document.getElementById('filter-analise-departamento').addEventListener('change', atualizarAnalise);
-    document.getElementById('calendario-ano').addEventListener('change', atualizarCalendario);
+    document.getElementById('calendario-ano').addEventListener('change', () => {
+        calendarioMesSelecionado = null;
+        atualizarCalendario();
+    });
+    document.getElementById('calendario-grid').addEventListener('click', e => {
+        const card = e.target.closest('.calendario-mes-card');
+        if (!card) return;
+        const mes = Number(card.dataset.mes);
+        if (Number.isNaN(mes)) return;
+        calendarioMesSelecionado = calendarioMesSelecionado === mes ? null : mes;
+        atualizarCalendario();
+    });
 }
 
 async function carregarDados() {
@@ -1312,7 +1325,7 @@ function montarPerfisContratosCalendario(registros) {
         if (!d.contrato) return;
 
         if (!mapa[d.contrato]) {
-            mapa[d.contrato] = { vencimentoValor: {}, statusValor: {} };
+            mapa[d.contrato] = { vencimentoValor: {}, statusValor: {}, fornecedorValor: {} };
         }
 
         if (d.vencimento) {
@@ -1323,11 +1336,16 @@ function montarPerfisContratosCalendario(registros) {
             mapa[d.contrato].statusValor[d.status_do_contrato] =
                 (mapa[d.contrato].statusValor[d.status_do_contrato] || 0) + 1;
         }
+        const forn = d.descricao_fornecedor || 'Não informado';
+        mapa[d.contrato].fornecedorValor[forn] =
+            (mapa[d.contrato].fornecedorValor[forn] || 0) + 1;
     });
 
     return Object.entries(mapa).map(([contrato, info]) => ({
         contrato,
         vencimento: parseDataFiscal(escolherPrincipal(info.vencimentoValor)),
+        vencimentoExibicao: formatarDataExibicao(escolherPrincipal(info.vencimentoValor)),
+        nome: escolherPrincipal(info.fornecedorValor),
         status: escolherPrincipal(info.statusValor)
     }));
 }
@@ -1356,7 +1374,8 @@ function montarDadosCalendario(ano) {
 
     perfis.forEach(perfil => {
         if (!isContratoAtivo(perfil.status)) return;
-        if (!perfil.vencimento || perfil.vencimento.getFullYear() !== ano) return;
+        if (!perfil.vencimento) return;
+        if (ano !== CALENDARIO_ANO_TODOS && perfil.vencimento.getFullYear() !== ano) return;
 
         const slot = meses[perfil.vencimento.getMonth()];
         slot.contratos += 1;
@@ -1369,48 +1388,139 @@ function montarDadosCalendario(ano) {
     return { meses, totalContratos, totalValor };
 }
 
-function renderizarBlocoMes(mes) {
-    return `<table class="calendario-mes">
-        <tr><th class="calendario-mes-nome" colspan="2">${esc(mes.nome)}</th></tr>
-        <tr>
-            <th class="calendario-mes-label">CONTRATOS</th>
-            <th class="calendario-mes-label">VALOR</th>
-        </tr>
-        <tr>
-            <td class="calendario-mes-qtd">${mes.contratos.toLocaleString('pt-BR')}</td>
-            <td class="calendario-mes-valor">${formatarValorCalendario(mes.valor)}</td>
-        </tr>
-    </table>`;
+function obterContratosCalendarioMes(ano, mesIndex) {
+    const base = obterRegistrosSemFiltroPeriodo();
+    const perfis = montarPerfisContratosCalendario(base);
+    const valorMedioMap = montarMapaValorMedioMensal(dadosFiltrados);
+
+    return perfis
+        .filter(perfil => {
+            if (!isContratoAtivo(perfil.status)) return false;
+            if (!perfil.vencimento || perfil.vencimento.getMonth() !== mesIndex) return false;
+            if (ano !== CALENDARIO_ANO_TODOS && perfil.vencimento.getFullYear() !== ano) return false;
+            return true;
+        })
+        .map(perfil => ({
+            contrato: perfil.contrato,
+            nome: perfil.nome,
+            vencimento: perfil.vencimentoExibicao,
+            valorMedio: valorMedioMap[perfil.contrato] || 0
+        }))
+        .sort((a, b) => {
+            const cmpVenc = (a.vencimento || '').localeCompare(b.vencimento || '', 'pt-BR');
+            return cmpVenc !== 0 ? cmpVenc : a.contrato.localeCompare(b.contrato, 'pt-BR');
+        });
+}
+
+function renderizarBlocoMes(mes, selecionado) {
+    const classe = selecionado ? 'calendario-mes-card calendario-mes-card-selected' : 'calendario-mes-card';
+    return `<button type="button" class="${classe}" data-mes="${mes.mes}" aria-pressed="${selecionado}">
+        <h3 class="calendario-mes-title">${esc(mes.nome)}</h3>
+        <div class="calendario-mes-stats">
+            <div class="calendario-mes-stat">
+                <span class="calendario-mes-stat-label">Contratos</span>
+                <span class="calendario-mes-stat-value">${mes.contratos.toLocaleString('pt-BR')}</span>
+            </div>
+            <div class="calendario-mes-stat">
+                <span class="calendario-mes-stat-label">Valor</span>
+                <span class="calendario-mes-stat-value calendario-mes-valor">${formatarValorCalendario(mes.valor)}</span>
+            </div>
+        </div>
+    </button>`;
+}
+
+function renderizarTotalCalendario(totalContratos, totalValor) {
+    return `<article class="calendario-total-card">
+        <h3 class="calendario-mes-title calendario-total-title">Total</h3>
+        <div class="calendario-mes-stats">
+            <div class="calendario-mes-stat">
+                <span class="calendario-mes-stat-label">Contratos</span>
+                <span class="calendario-mes-stat-value">${totalContratos.toLocaleString('pt-BR')}</span>
+            </div>
+            <div class="calendario-mes-stat">
+                <span class="calendario-mes-stat-label">Valor</span>
+                <span class="calendario-mes-stat-value calendario-mes-valor">${formatarValorCalendario(totalValor)}</span>
+            </div>
+        </div>
+    </article>`;
+}
+
+function obterTituloMesCalendario(ano, mesIndex) {
+    const nomeMes = MESES_CALENDARIO[mesIndex];
+    if (ano === CALENDARIO_ANO_TODOS) {
+        return `Contratos em ${nomeMes} (todos os anos)`;
+    }
+    return `Contratos em ${nomeMes} de ${ano}`;
+}
+
+function renderizarListaContratosCalendario(ano, mesIndex) {
+    const secao = document.getElementById('calendario-contratos');
+    const titulo = document.getElementById('calendario-contratos-titulo');
+    const tbody = document.getElementById('calendario-contratos-body');
+    if (!secao || !titulo || !tbody) return;
+
+    if (mesIndex === null || mesIndex === undefined) {
+        secao.classList.add('hidden');
+        tbody.innerHTML = '';
+        return;
+    }
+
+    const contratos = obterContratosCalendarioMes(ano, mesIndex);
+    titulo.textContent = obterTituloMesCalendario(ano, mesIndex);
+
+    if (!contratos.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="calendario-contratos-empty">Nenhum contrato encontrado para esta seleção.</td></tr>`;
+    } else {
+        tbody.innerHTML = contratos.map(c => `
+            <tr>
+                <td><strong>${esc(c.contrato)}</strong></td>
+                <td>${esc(c.nome)}</td>
+                <td>${esc(c.vencimento)}</td>
+                <td class="valor-cell">${formatarValorCalendario(c.valorMedio)}</td>
+            </tr>
+        `).join('');
+    }
+
+    secao.classList.remove('hidden');
 }
 
 function atualizarCalendario() {
     const grid = document.getElementById('calendario-grid');
-    const totalEl = document.getElementById('calendario-total');
+    const totalWrap = document.getElementById('calendario-total-wrap');
     const selectAno = document.getElementById('calendario-ano');
-    if (!grid || !totalEl || !selectAno) return;
+    if (!grid || !totalWrap || !selectAno) return;
 
-    const anoSelecionado = Number(selectAno.value) || new Date().getFullYear();
+    const anoAnterior = selectAno.value;
     const base = obterRegistrosSemFiltroPeriodo();
     const perfis = montarPerfisContratosCalendario(base);
     const anos = obterAnosVencimentoDisponiveis(perfis);
 
-    selectAno.innerHTML = anos.length
-        ? anos.map(ano => `<option value="${ano}">${ano}</option>`).join('')
-        : `<option value="${new Date().getFullYear()}">${new Date().getFullYear()}</option>`;
+    const opcoesAno = [`<option value="${CALENDARIO_ANO_TODOS}">Todos os anos</option>`];
+    if (anos.length) {
+        opcoesAno.push(...anos.map(ano => `<option value="${ano}">${ano}</option>`));
+    } else {
+        opcoesAno.push(`<option value="${new Date().getFullYear()}">${new Date().getFullYear()}</option>`);
+    }
+    selectAno.innerHTML = opcoesAno.join('');
 
-    const ano = anos.includes(anoSelecionado) ? anoSelecionado : (anos[0] || new Date().getFullYear());
-    selectAno.value = String(ano);
+    const anoValido = anoAnterior === CALENDARIO_ANO_TODOS || anos.includes(Number(anoAnterior));
+    const anoSelecionado = anoValido
+        ? anoAnterior
+        : (anos.length ? String(anos[0]) : CALENDARIO_ANO_TODOS);
+    selectAno.value = anoSelecionado;
+
+    const ano = anoSelecionado === CALENDARIO_ANO_TODOS
+        ? CALENDARIO_ANO_TODOS
+        : Number(anoSelecionado);
 
     const { meses, totalContratos, totalValor } = montarDadosCalendario(ano);
 
-    grid.innerHTML = meses.map(renderizarBlocoMes).join('');
-    totalEl.innerHTML = `
-        <tr><th class="calendario-mes-nome" colspan="2">TOTAL</th></tr>
-        <tr>
-            <td class="calendario-mes-qtd">${totalContratos.toLocaleString('pt-BR')}</td>
-            <td class="calendario-mes-valor">${formatarValorCalendario(totalValor)}</td>
-        </tr>
-    `;
+    grid.innerHTML = meses.map(mes =>
+        renderizarBlocoMes(mes, calendarioMesSelecionado === mes.mes)
+    ).join('');
+    totalWrap.innerHTML = renderizarTotalCalendario(totalContratos, totalValor);
+
+    renderizarListaContratosCalendario(ano, calendarioMesSelecionado);
 }
 
 function formatarValorCalendario(valor) {

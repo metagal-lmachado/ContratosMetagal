@@ -304,7 +304,7 @@
                         <div class="calendario-toolbar">
                             <div>
                                 <h2>Calendário de Vencimentos</h2>
-                                <p class="calendario-subtitle">Contratos ativos por mês de vencimento</p>
+                                <p class="calendario-subtitle">Contratos ativos por mês de vencimento — clique em um mês para ver os contratos</p>
                             </div>
                             <div class="calendario-select-group">
                                 <label class="calendario-select-label" for="calendario-ano">Ano</label>
@@ -312,8 +312,23 @@
                             </div>
                         </div>
                         <div class="calendario-grid" id="calendario-grid"></div>
-                        <div class="calendario-total-wrap">
-                            <table class="calendario-mes calendario-total" id="calendario-total"></table>
+                        <div class="calendario-total-wrap" id="calendario-total-wrap"></div>
+                        <div class="calendario-contratos hidden" id="calendario-contratos">
+                            <h3 class="chart-title" id="calendario-contratos-titulo">Contratos</h3>
+                            <p class="chart-hint">Contratos ativos com vencimento no mês selecionado</p>
+                            <div class="table-scroll">
+                                <table class="data-table" id="calendario-contratos-tabela">
+                                    <thead>
+                                        <tr>
+                                            <th>Contrato</th>
+                                            <th>Nome</th>
+                                            <th>Vencimento</th>
+                                            <th>Valor Médio Mensal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="calendario-contratos-body"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </section>

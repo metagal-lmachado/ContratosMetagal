@@ -1203,8 +1203,9 @@ body {
     background: var(--card);
     border-radius: 14px;
     box-shadow: var(--shadow);
+    border: 1px solid var(--border);
     padding: 24px;
-    max-width: 980px;
+    max-width: 1100px;
 }
 
 .calendario-toolbar {
@@ -1219,22 +1220,34 @@ body {
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.calendario-toolbar h2::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: var(--green-light);
+    border-radius: 2px;
 }
 
 .calendario-subtitle {
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     color: var(--text-muted);
-    margin-top: 4px;
+    margin-top: 6px;
 }
 
 .calendario-select-group {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
+    min-width: 160px;
 }
 
 .calendario-select-label {
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -1242,13 +1255,22 @@ body {
 }
 
 .calendario-select {
-    padding: 8px 12px;
-    border: 1px solid var(--border);
+    padding: 11px 14px;
+    border: 2px solid var(--border);
     border-radius: 8px;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-family: inherit;
+    font-weight: 500;
     background: #fff;
-    min-width: 100px;
+    color: var(--text);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.calendario-select:focus {
+    outline: none;
+    border-color: var(--green-light);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
 }
 
 .calendario-grid {
@@ -1257,55 +1279,106 @@ body {
     gap: 16px;
 }
 
-.calendario-mes {
+.calendario-mes-card {
+    display: block;
     width: 100%;
-    border-collapse: collapse;
-    border: 1px solid var(--text);
-    font-size: 0.88rem;
-    table-layout: fixed;
+    text-align: left;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+    color: inherit;
 }
 
-.calendario-mes th,
-.calendario-mes td {
-    border: 1px solid var(--text);
-    padding: 10px 8px;
-    text-align: center;
-    vertical-align: middle;
+.calendario-mes-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.1);
+    border-color: rgba(76, 175, 80, 0.35);
 }
 
-.calendario-mes .calendario-mes-nome {
-    font-weight: 600;
-    text-transform: lowercase;
-    background: #fff;
+.calendario-mes-card-selected {
+    border-color: var(--green-light);
+    background: var(--green-pale);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+}
+
+.calendario-mes-title {
     font-size: 0.95rem;
-}
-
-.calendario-mes .calendario-mes-label {
     font-weight: 700;
-    font-size: 0.72rem;
+    color: var(--text);
+    margin-bottom: 12px;
+    text-transform: capitalize;
+}
+
+.calendario-mes-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.calendario-mes-stat-label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
     letter-spacing: 0.03em;
-    background: #fff;
+    margin-bottom: 4px;
 }
 
-.calendario-mes .calendario-mes-valor {
-    font-weight: 600;
-    font-size: 0.9rem;
+.calendario-mes-stat-value {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
 }
 
-.calendario-mes .calendario-mes-qtd {
-    font-weight: 600;
-    font-size: 0.95rem;
+.calendario-mes-valor {
+    color: var(--green);
 }
 
 .calendario-total-wrap {
     margin-top: 20px;
-    max-width: 320px;
+    max-width: 340px;
 }
 
-.calendario-total .calendario-mes-nome {
+.calendario-total-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+}
+
+.calendario-total-title {
     text-transform: uppercase;
-    font-weight: 800;
     letter-spacing: 0.04em;
+    font-size: 0.88rem;
+}
+
+.calendario-contratos {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+}
+
+.calendario-contratos.hidden {
+    display: none;
+}
+
+.calendario-contratos .chart-title {
+    margin-bottom: 4px;
+}
+
+.calendario-contratos-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 24px 14px !important;
 }
 
 @media (max-width: 1200px) {
