@@ -314,8 +314,19 @@
                         <div class="calendario-grid" id="calendario-grid"></div>
                         <div class="calendario-total-wrap" id="calendario-total-wrap"></div>
                         <div class="calendario-contratos hidden" id="calendario-contratos">
-                            <h3 class="chart-title" id="calendario-contratos-titulo">Contratos</h3>
-                            <p class="chart-hint">Contratos ativos com vencimento no mês selecionado</p>
+                            <div class="calendario-contratos-header">
+                                <div>
+                                    <h3 class="chart-title" id="calendario-contratos-titulo">Contratos</h3>
+                                    <p class="chart-hint">Contratos ativos com vencimento no mês selecionado</p>
+                                </div>
+                                <div class="calendario-select-group">
+                                    <label class="calendario-select-label" for="calendario-ordenacao">Ordenar por</label>
+                                    <select id="calendario-ordenacao" class="calendario-select">
+                                        <option value="vencimento">Data de vencimento</option>
+                                        <option value="valor-desc">Valor (maior primeiro)</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="table-scroll">
                                 <table class="data-table" id="calendario-contratos-tabela">
                                     <thead>

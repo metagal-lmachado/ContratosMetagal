@@ -38,6 +38,7 @@ let periodoFim = null;
 let charts = {};
 const CALENDARIO_ANO_TODOS = 'todos';
 let calendarioMesSelecionado = null;
+let calendarioOrdenacao = 'vencimento';
 
 document.addEventListener('DOMContentLoaded', async () => {
     inicializarEventos();
@@ -103,6 +104,14 @@ function inicializarEventos() {
         if (Number.isNaN(mes)) return;
         calendarioMesSelecionado = calendarioMesSelecionado === mes ? null : mes;
         atualizarCalendario();
+    });
+    document.getElementById('calendario-ordenacao').addEventListener('change', e => {
+        calendarioOrdenacao = e.target.value;
+        const selectAno = document.getElementById('calendario-ano');
+        const ano = selectAno.value === CALENDARIO_ANO_TODOS
+            ? CALENDARIO_ANO_TODOS
+            : Number(selectAno.value);
+        renderizarListaContratosCalendario(ano, calendarioMesSelecionado);
     });
 }
 
@@ -1404,11 +1413,18 @@ function obterContratosCalendarioMes(ano, mesIndex) {
             contrato: perfil.contrato,
             nome: perfil.nome,
             vencimento: perfil.vencimentoExibicao,
+            vencimentoData: perfil.vencimento,
             valorMedio: valorMedioMap[perfil.contrato] || 0
         }))
         .sort((a, b) => {
-            const cmpVenc = (a.vencimento || '').localeCompare(b.vencimento || '', 'pt-BR');
-            return cmpVenc !== 0 ? cmpVenc : a.contrato.localeCompare(b.contrato, 'pt-BR');
+            if (calendarioOrdenacao === 'valor-desc') {
+                const cmp = b.valorMedio - a.valorMedio;
+                return cmp !== 0 ? cmp : a.contrato.localeCompare(b.contrato, 'pt-BR');
+            }
+            const ta = a.vencimentoData ? a.vencimentoData.getTime() : 0;
+            const tb = b.vencimentoData ? b.vencimentoData.getTime() : 0;
+            const cmp = ta - tb;
+            return cmp !== 0 ? cmp : a.contrato.localeCompare(b.contrato, 'pt-BR');
         });
 }
 
@@ -1464,6 +1480,9 @@ function renderizarListaContratosCalendario(ano, mesIndex) {
         tbody.innerHTML = '';
         return;
     }
+
+    const selectOrdenacao = document.getElementById('calendario-ordenacao');
+    if (selectOrdenacao) selectOrdenacao.value = calendarioOrdenacao;
 
     const contratos = obterContratosCalendarioMes(ano, mesIndex);
     titulo.textContent = obterTituloMesCalendario(ano, mesIndex);
