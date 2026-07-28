@@ -647,6 +647,43 @@ body {
     cursor: pointer;
 }
 
+.chart-copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.55);
+    color: rgba(100, 116, 139, 0.55);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.45;
+    padding: 0;
+    transition: opacity 0.2s, background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.chart-wrap:hover .chart-copy-btn,
+.analise-pie-wrap:hover .chart-copy-btn,
+.chart-copy-btn:hover,
+.chart-copy-btn:focus-visible {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--green-dark);
+    border-color: rgba(27, 61, 27, 0.2);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    outline: none;
+}
+
+.chart-copy-btn.copied {
+    color: var(--green-light);
+    border-color: rgba(76, 175, 80, 0.4);
+}
+
 .chart-legend {
     display: flex;
     flex-wrap: wrap;

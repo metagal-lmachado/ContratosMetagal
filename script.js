@@ -42,6 +42,7 @@ let calendarioOrdenacao = 'vencimento';
 
 document.addEventListener('DOMContentLoaded', async () => {
     inicializarEventos();
+    inicializarBotoesCopiarGrafico();
     await carregarDados();
 });
 
@@ -741,6 +742,60 @@ function destruirChart(nome) {
     if (charts[nome]) {
         charts[nome].destroy();
         charts[nome] = null;
+    }
+}
+
+const ICONE_CAMERA = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
+
+function inicializarBotoesCopiarGrafico() {
+    document.querySelectorAll('.chart-wrap canvas, .analise-pie-wrap canvas').forEach(canvas => {
+        const wrap = canvas.parentElement;
+        if (wrap.querySelector('.chart-copy-btn')) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chart-copy-btn';
+        btn.title = 'Copiar imagem do gráfico';
+        btn.setAttribute('aria-label', 'Copiar imagem do gráfico');
+        btn.innerHTML = ICONE_CAMERA;
+        btn.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            copiarGraficoParaClipboard(canvas, btn);
+        });
+        wrap.appendChild(btn);
+    });
+}
+
+async function copiarGraficoParaClipboard(canvas, btn) {
+    try {
+        const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Falha ao gerar imagem'))), 'image/png');
+        });
+
+        if (navigator.clipboard?.write && window.ClipboardItem) {
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        } else {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'grafico.png';
+            link.click();
+            URL.revokeObjectURL(url);
+            alert('Seu navegador não suporta copiar imagens. O arquivo foi baixado.');
+            return;
+        }
+
+        const tituloOriginal = btn.title;
+        btn.classList.add('copied');
+        btn.title = 'Copiado!';
+        setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.title = tituloOriginal;
+        }, 2000);
+    } catch (err) {
+        console.error(err);
+        alert('Não foi possível copiar a imagem. Verifique as permissões do navegador e tente novamente.');
     }
 }
 
