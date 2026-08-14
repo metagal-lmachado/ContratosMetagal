@@ -1,14 +1,17 @@
 :root {
-    --green-dark: #1b3d1b;
-    --green: #2d5016;
-    --green-light: #4caf50;
-    --green-pale: #e8f5e9;
-    --bg: #f0f2f5;
+    --brand: #0e48ab;
+    --brand-dark: #0a357a;
+    --brand-red: #f72908;
+    --green-dark: #0a357a;
+    --green: #0e48ab;
+    --green-light: #2560c4;
+    --green-pale: #eef3fb;
+    --bg: #f5f7fb;
     --card: #ffffff;
-    --text: #1e293b;
-    --text-muted: #64748b;
-    --border: #e2e8f0;
-    --danger: #dc2626;
+    --text: #322b2a;
+    --text-muted: #707070;
+    --border: #dcdcdc;
+    --danger: #f72908;
     --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
     --sidebar-w: 300px;
     --sidebar-collapsed: 72px;
@@ -25,7 +28,7 @@ html {
 }
 
 body {
-    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-family: 'Montserrat', 'Segoe UI', sans-serif;
     background: var(--bg);
     color: var(--text);
     line-height: 1.5;
@@ -49,7 +52,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 24px;
-    background: linear-gradient(165deg, var(--green-dark) 0%, var(--green) 55%, #1a3a1a 100%);
+    background: linear-gradient(165deg, var(--brand-dark) 0%, var(--brand) 60%, #07275c 100%);
 }
 
 .login-overlay.hidden { display: none; }
@@ -79,7 +82,7 @@ body {
 .login-title {
     font-size: 1.45rem;
     font-weight: 700;
-    color: var(--text);
+    color: var(--brand);
     margin-bottom: 6px;
 }
 
@@ -120,7 +123,7 @@ body {
 .login-input:focus {
     outline: none;
     border-color: var(--green-light);
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+    box-shadow: 0 0 0 3px rgba(14, 72, 171, 0.15);
 }
 
 .login-erro {
@@ -140,7 +143,7 @@ body {
     font-size: 0.85rem;
     color: var(--green);
     background: var(--green-pale);
-    border: 1px solid rgba(76, 175, 80, 0.35);
+    border: 1px solid rgba(14, 72, 171, 0.35);
     border-radius: 8px;
     padding: 10px 12px;
     margin-bottom: 8px;
@@ -155,7 +158,7 @@ body {
     margin-bottom: 8px;
     padding: 12px 14px;
     background: var(--green-pale);
-    border: 1px solid rgba(76, 175, 80, 0.35);
+    border: 1px solid rgba(14, 72, 171, 0.35);
     border-radius: 8px;
 }
 
@@ -263,7 +266,7 @@ body {
 .sidebar {
     width: var(--sidebar-w);
     height: 100vh;
-    background: linear-gradient(180deg, var(--green-dark) 0%, var(--green) 100%);
+    background: linear-gradient(180deg, var(--brand-dark) 0%, var(--brand) 100%);
     color: #fff;
     display: flex;
     flex-direction: column;
@@ -375,10 +378,10 @@ body {
     color: var(--green-dark);
     width: 42px;
     height: 42px;
-    border: 1px solid rgba(27, 61, 27, 0.12);
+    border: 1px solid rgba(14, 72, 171, 0.12);
 }
 
-.btn-menu:hover { background: #dcedc8; }
+.btn-menu:hover { background: #dce6f6; }
 
 .sidebar-backdrop {
     display: none;
@@ -412,7 +415,7 @@ body {
 .nav-item.active {
     background: var(--green-light);
     color: #fff;
-    box-shadow: 0 4px 14px rgba(76,175,80,0.35);
+    box-shadow: 0 4px 14px rgba(14, 72, 171, 0.35);
 }
 
 .nav-icon { font-size: 1.2rem; min-width: 24px; text-align: center; }
@@ -477,7 +480,7 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
-    scrollbar-color: var(--green-light) rgba(45, 80, 22, 0.12);
+    scrollbar-color: var(--green-light) rgba(14, 72, 171, 0.12);
 }
 
 .filters-panel-body::-webkit-scrollbar {
@@ -485,7 +488,7 @@ body {
 }
 
 .filters-panel-body::-webkit-scrollbar-track {
-    background: rgba(45, 80, 22, 0.08);
+    background: rgba(14, 72, 171, 0.08);
     border-radius: 8px;
     margin: 4px 0;
 }
@@ -529,7 +532,7 @@ body {
 .search-input:focus {
     outline: none;
     border-color: var(--green-light);
-    box-shadow: 0 0 0 3px rgba(76,175,80,0.15);
+    box-shadow: 0 0 0 3px rgba(14, 72, 171, 0.15);
 }
 
 .filter-actions {
@@ -559,7 +562,7 @@ body {
 .btn-sm { padding: 7px 12px; font-size: 0.82rem; }
 .btn-block { width: 100%; }
 .btn-primary { background: var(--green-light); color: #fff; }
-.btn-primary:hover { background: #43a047; transform: translateY(-1px); }
+.btn-primary:hover { background: var(--brand-dark); transform: translateY(-1px); }
 .btn-secondary { background: var(--green); color: #fff; }
 .btn-secondary:hover { background: var(--green-dark); }
 .btn-ghost { background: var(--border); color: var(--text); }
@@ -670,7 +673,7 @@ body {
 .page-title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--text);
+    color: var(--brand);
 }
 
 .loading-badge {
@@ -792,7 +795,7 @@ body {
     border-radius: 20px;
     font-size: 0.8rem;
     font-weight: 500;
-    border: 1px solid rgba(76,175,80,0.3);
+    border: 1px solid rgba(14, 72, 171, 0.3);
 }
 
 .filter-chip button {
@@ -856,7 +859,7 @@ body {
 .chart-title {
     font-size: 1rem;
     font-weight: 700;
-    color: var(--text);
+    color: var(--brand);
     margin-bottom: 4px;
     display: flex;
     align-items: center;
@@ -922,14 +925,14 @@ body {
     opacity: 1;
     background: rgba(255, 255, 255, 0.95);
     color: var(--green-dark);
-    border-color: rgba(27, 61, 27, 0.2);
+    border-color: rgba(14, 72, 171, 0.2);
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
     outline: none;
 }
 
 .chart-copy-btn.copied {
     color: var(--green-light);
-    border-color: rgba(76, 175, 80, 0.4);
+    border-color: rgba(14, 72, 171, 0.4);
 }
 
 .chart-legend {
@@ -1023,8 +1026,8 @@ body {
     font-weight: 600;
 }
 
-.badge-ativo { background: #e8f5e9; color: #2e7d32; }
-.badge-concluido { background: #e3f2fd; color: #1565c0; }
+.badge-ativo { background: var(--green-pale); color: var(--brand); }
+.badge-concluido { background: #eceff4; color: #322b2a; }
 
 .valor-cell {
     font-weight: 700;
@@ -1089,7 +1092,7 @@ body {
     font-weight: 800;
     font-size: 0.82rem;
     text-transform: uppercase;
-    border-bottom: 2px solid rgba(76, 175, 80, 0.35);
+    border-bottom: 2px solid rgba(14, 72, 171, 0.35);
     position: sticky;
     top: 0;
     z-index: 3;
@@ -1204,14 +1207,14 @@ body {
 }
 
 .tabela-contratos tbody tr:hover {
-    background: #f1f8f1;
+    background: var(--green-pale);
 }
 
 .tabela-contratos tbody tr:hover .col-fixa,
 .tabela-contratos tbody tr:hover .col-fixa-2,
 .tabela-contratos tbody tr:hover .col-fixa-3,
 .tabela-contratos tbody tr:hover .col-fixa-4 {
-    background: #f1f8f1;
+    background: var(--green-pale);
 }
 
 .tabela-contratos tbody td {
@@ -1288,7 +1291,7 @@ body {
 .analise-select:focus {
     outline: none;
     border-color: var(--green-light);
-    box-shadow: 0 0 0 3px rgba(76,175,80,0.15);
+    box-shadow: 0 0 0 3px rgba(14, 72, 171, 0.15);
 }
 
 .analise-kpi-left {
@@ -1328,7 +1331,7 @@ body {
     font-weight: 800;
     letter-spacing: 0.02em;
     text-transform: uppercase;
-    color: var(--text);
+    color: var(--brand);
 }
 
 .analise-divider {
@@ -1504,7 +1507,7 @@ body {
 .calendario-toolbar h2 {
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--text);
+    color: var(--brand);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1555,7 +1558,7 @@ body {
 .calendario-select:focus {
     outline: none;
     border-color: var(--green-light);
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+    box-shadow: 0 0 0 3px rgba(14, 72, 171, 0.15);
 }
 
 .calendario-grid {
@@ -1582,13 +1585,13 @@ body {
 .calendario-mes-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 28px rgba(15, 23, 42, 0.1);
-    border-color: rgba(76, 175, 80, 0.35);
+    border-color: rgba(14, 72, 171, 0.35);
 }
 
 .calendario-mes-card-selected {
     border-color: var(--green-light);
     background: var(--green-pale);
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
+    box-shadow: 0 0 0 3px rgba(14, 72, 171, 0.15);
 }
 
 .calendario-mes-title {

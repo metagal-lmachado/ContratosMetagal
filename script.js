@@ -1324,13 +1324,13 @@ function atualizarGraficoMensal() {
                     label: 'Prazo médio',
                     data: prazos,
                     yAxisID: 'yPrazo',
-                    borderColor: '#f59e0b',
-                    backgroundColor: '#f59e0b',
+                    borderColor: '#ff9800',
+                    backgroundColor: '#ff9800',
                     borderWidth: 3,
                     fill: false,
                     tension: 0.35,
                     pointRadius: 5,
-                    pointBackgroundColor: '#f59e0b',
+                    pointBackgroundColor: '#ff9800',
                     pointBorderColor: '#fff',
                     pointBorderWidth: 2,
                     pointHoverRadius: 7,
@@ -1390,11 +1390,11 @@ function atualizarGraficoMensal() {
                     title: {
                         display: true,
                         text: 'Prazo médio (dias)',
-                        color: '#d97706',
+                        color: '#e65100',
                         font: { weight: '600', size: 12 }
                     },
                     ticks: {
-                        color: '#d97706',
+                        color: '#e65100',
                         callback: v => `${Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} dias`
                     },
                     grid: { drawOnChartArea: false }
