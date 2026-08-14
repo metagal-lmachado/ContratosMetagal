@@ -10,7 +10,33 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="app">
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <img src="LOGO.png" alt="metagal" class="login-logo">
+            <h1 class="login-title">Contratos Metagal</h1>
+            <p class="login-subtitle">Informe seu usuário para acessar o painel</p>
+            <form id="form-login" class="login-form" autocomplete="on">
+                <label class="login-label" for="login-usuario">Usuário</label>
+                <input type="text" id="login-usuario" class="login-input" name="username" autocomplete="username" placeholder="ex.: lmachado" required>
+                <p id="login-erro" class="login-erro hidden" role="alert"></p>
+                <p id="login-ok" class="login-ok hidden" role="status"></p>
+                <div id="login-local" class="login-local hidden">
+                    <p class="login-local-text">O navegador bloqueou a leitura automática dos arquivos. Selecione a pasta do projeto para carregar <strong>acesso.csv</strong> e <strong>DADOS.csv</strong>.</p>
+                    <label class="btn btn-secondary btn-block btn-file">
+                        Selecionar pasta do projeto
+                        <input type="file" id="input-pasta-projeto" webkitdirectory directory hidden>
+                    </label>
+                    <label class="login-local-link">
+                        ou selecionar somente acesso.csv
+                        <input type="file" id="input-acesso-csv" accept=".csv" hidden>
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" id="btn-login">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="app hidden" id="app">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-top">
                 <div class="brand">
@@ -145,10 +171,24 @@
                         <input type="file" id="input-csv" accept=".csv" hidden>
                     </label>
                     <button type="button" class="btn btn-primary" id="btn-reload">↻ Recarregar</button>
+                    <div class="user-session" id="user-session">
+                        <div class="user-session-info">
+                            <strong id="user-session-name">—</strong>
+                            <span id="user-session-role">—</span>
+                        </div>
+                        <button type="button" class="btn btn-ghost btn-sm" id="btn-logout">Sair</button>
+                    </div>
                 </div>
             </header>
 
             <div class="content">
+                <div id="dados-faltando" class="dados-faltando hidden">
+                    <p>Não foi possível carregar <strong>DADOS.csv</strong> automaticamente. Selecione o arquivo para exibir o painel.</p>
+                    <label class="btn btn-primary btn-file">
+                        Selecionar DADOS.csv
+                        <input type="file" id="input-csv-faltando" accept=".csv" hidden>
+                    </label>
+                </div>
                 <section id="page-analise" class="page">
                     <div class="analise-report">
                         <div class="analise-toolbar">

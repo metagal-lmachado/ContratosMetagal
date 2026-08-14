@@ -2,6 +2,8 @@ Chart.register(ChartDataLabels);
 
 const PAGE_SIZE = 20;
 const CSV_PATH = 'DADOS.csv';
+const ACESSO_PATH = 'acesso.csv';
+const SESSION_KEY = 'contratos_metagal_usuario';
 
 const CORES_ESTABELECIMENTO = {
     VIES: '#2d5016',
@@ -28,6 +30,7 @@ const CORES_BARRAS = [
     'rgba(0, 150, 136, 0.75)'
 ];
 
+let dadosCompletos = [];
 let dados = [];
 let dadosFiltrados = [];
 let dadosTabela = [];
@@ -39,11 +42,15 @@ let charts = {};
 const CALENDARIO_ANO_TODOS = 'todos';
 let calendarioMesSelecionado = null;
 let calendarioOrdenacao = 'vencimento';
+let mapaAcessos = {};
+let usuarioAtual = null;
+let dadosCsvLocal = null;
+let listaAcessoCarregada = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
     inicializarEventos();
     inicializarBotoesCopiarGrafico();
-    await carregarDados();
+    await iniciarControleAcesso();
 });
 
 function inicializarEventos() {
@@ -114,17 +121,346 @@ function inicializarEventos() {
             : Number(selectAno.value);
         renderizarListaContratosCalendario(ano, calendarioMesSelecionado);
     });
+
+    document.getElementById('form-login').addEventListener('submit', e => {
+        e.preventDefault();
+        const usuario = document.getElementById('login-usuario').value;
+        autenticarUsuario(usuario);
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', encerrarSessao);
+    document.getElementById('input-pasta-projeto').addEventListener('change', e => {
+        carregarArquivosPasta(e.target.files);
+        e.target.value = '';
+    });
+    document.getElementById('input-acesso-csv').addEventListener('change', e => {
+        const file = e.target.files?.[0];
+        if (file) carregarAcessoArquivo(file);
+        e.target.value = '';
+    });
+    document.getElementById('input-csv-faltando')?.addEventListener('change', e => {
+        const file = e.target.files?.[0];
+        if (file) carregarCsvArquivo(file);
+        e.target.value = '';
+    });
+}
+
+async function iniciarControleAcesso() {
+    const ok = await carregarAcessos();
+    if (!ok) {
+        mostrarFallbackLocal();
+        return;
+    }
+
+    const salvo = sessionStorage.getItem(SESSION_KEY);
+    if (salvo) autenticarUsuario(salvo, { silencioso: true });
+}
+
+function isFalhaLeituraLocal(erro) {
+    const raw = String(erro?.message || erro || '');
+    return location.protocol === 'file:'
+        || /failed to fetch|networkerror|load failed|not allowed|cors/i.test(raw);
+}
+
+function mostrarFallbackLocal() {
+    document.getElementById('login-local').classList.remove('hidden');
+}
+
+function ocultarFallbackLocal() {
+    document.getElementById('login-local').classList.add('hidden');
+}
+
+function mostrarAvisoLogin(mensagem) {
+    const el = document.getElementById('login-ok');
+    if (!mensagem) {
+        el.classList.add('hidden');
+        el.textContent = '';
+        return;
+    }
+    el.textContent = mensagem;
+    el.classList.remove('hidden');
+}
+
+function mostrarBannerDadosFaltando(exibir) {
+    document.getElementById('dados-faltando')?.classList.toggle('hidden', !exibir);
+}
+
+function localizarArquivo(fileList, nome) {
+    const alvo = nome.toLowerCase();
+    return [...fileList].find(file => file.name.toLowerCase() === alvo) || null;
+}
+
+async function carregarAcessos() {
+    try {
+        const response = await fetch(ACESSO_PATH);
+        if (!response.ok) {
+            throw new Error(`Não foi possível carregar ${ACESSO_PATH}.`);
+        }
+        const buffer = await response.arrayBuffer();
+        const texto = decodificarCsvAcesso(buffer);
+        processarAcessoCsv(texto);
+        listaAcessoCarregada = true;
+        ocultarFallbackLocal();
+        return true;
+    } catch (erro) {
+        console.error(erro);
+        listaAcessoCarregada = false;
+        mostrarErroLogin(isFalhaLeituraLocal(erro)
+            ? ''
+            : (erro.message || 'Não foi possível carregar a lista de acesso.'));
+        mostrarFallbackLocal();
+        return false;
+    }
+}
+
+async function carregarArquivosPasta(fileList) {
+    if (!fileList?.length) return;
+
+    const acesso = localizarArquivo(fileList, 'acesso.csv');
+    const dados = localizarArquivo(fileList, 'DADOS.csv');
+
+    if (!acesso) {
+        mostrarAvisoLogin('');
+        mostrarErroLogin('A pasta selecionada não contém acesso.csv.');
+        mostrarFallbackLocal();
+        return;
+    }
+
+    try {
+        const texto = decodificarCsvAcesso(await acesso.arrayBuffer());
+        processarAcessoCsv(texto);
+        listaAcessoCarregada = true;
+        dadosCsvLocal = dados ? await dados.arrayBuffer() : null;
+        mostrarErroLogin('');
+        ocultarFallbackLocal();
+        mostrarAvisoLogin(dados
+            ? 'Arquivos carregados. Informe seu usuário para entrar.'
+            : 'acesso.csv carregado. Informe seu usuário. O DADOS.csv poderá ser selecionado depois.');
+        document.getElementById('login-usuario').focus();
+
+        const salvo = sessionStorage.getItem(SESSION_KEY);
+        if (salvo) autenticarUsuario(salvo, { silencioso: true });
+    } catch (erro) {
+        console.error(erro);
+        listaAcessoCarregada = false;
+        mostrarAvisoLogin('');
+        mostrarErroLogin(erro.message || 'Não foi possível ler os arquivos da pasta.');
+        mostrarFallbackLocal();
+    }
+}
+
+async function carregarAcessoArquivo(file) {
+    try {
+        const texto = decodificarCsvAcesso(await file.arrayBuffer());
+        processarAcessoCsv(texto);
+        listaAcessoCarregada = true;
+        mostrarErroLogin('');
+        ocultarFallbackLocal();
+        mostrarAvisoLogin('Lista de acesso carregada. Informe seu usuário para entrar.');
+        document.getElementById('login-usuario').focus();
+    } catch (erro) {
+        console.error(erro);
+        listaAcessoCarregada = false;
+        mostrarAvisoLogin('');
+        mostrarErroLogin(erro.message || 'Não foi possível ler acesso.csv.');
+        mostrarFallbackLocal();
+    }
+}
+
+function decodificarCsvAcesso(buffer) {
+    const encodings = ['windows-1252', 'iso-8859-1', 'utf-8'];
+    for (const enc of encodings) {
+        try {
+            const texto = new TextDecoder(enc).decode(buffer);
+            if (/usuario/i.test(texto)) return texto;
+        } catch (_) { /* tenta próximo encoding */ }
+    }
+    return new TextDecoder('utf-8').decode(buffer);
+}
+
+function processarAcessoCsv(texto) {
+    const linhas = texto.split(/\r?\n/).filter(l => l.trim());
+    if (linhas.length < 2) throw new Error('Arquivo de acesso vazio ou inválido.');
+
+    const cabecalho = parseCsvLinha(linhas[0]).map(c => normalizarChave(c));
+    const iUser = cabecalho.indexOf('usuario');
+    const iNivel = cabecalho.indexOf('nivel');
+    const iAcesso = cabecalho.indexOf('acesso');
+
+    if (iUser < 0 || iNivel < 0 || iAcesso < 0) {
+        throw new Error('acesso.csv deve conter as colunas usuario, nivel e acesso.');
+    }
+
+    mapaAcessos = {};
+    linhas.slice(1).forEach(linha => {
+        const partes = parseCsvLinha(linha);
+        const usuario = (partes[iUser] || '').trim().toLowerCase();
+        const nivel = (partes[iNivel] || '').trim();
+        const acesso = (partes[iAcesso] || '').trim();
+        if (!usuario) return;
+
+        if (!mapaAcessos[usuario]) {
+            mapaAcessos[usuario] = { usuario, admin: false, regras: [], niveis: new Set() };
+        }
+
+        const perfil = mapaAcessos[usuario];
+        if (nivel) perfil.niveis.add(nivel);
+
+        if (normalizarChave(nivel) === 'administrador') {
+            perfil.admin = true;
+            return;
+        }
+
+        if (nivel && acesso) {
+            perfil.regras.push({ coluna: nivel, valor: acesso });
+        }
+    });
+}
+
+function autenticarUsuario(login, opcoes = {}) {
+    const usuario = String(login || '').trim().toLowerCase();
+    if (!usuario) {
+        if (!opcoes.silencioso) mostrarErroLogin('Informe o usuário para acessar o painel.');
+        return false;
+    }
+
+    if (!listaAcessoCarregada) {
+        if (!opcoes.silencioso) {
+            mostrarErroLogin('Carregue a lista de acesso antes de entrar.');
+            mostrarFallbackLocal();
+        }
+        return false;
+    }
+
+    const perfil = mapaAcessos[usuario];
+    if (!perfil) {
+        usuarioAtual = null;
+        sessionStorage.removeItem(SESSION_KEY);
+        if (!opcoes.silencioso) {
+            mostrarErroLogin('Usuário sem permissão de acesso. Você não pode visualizar os dados do painel.');
+        }
+        return false;
+    }
+
+    usuarioAtual = {
+        usuario: perfil.usuario,
+        admin: perfil.admin,
+        regras: perfil.regras,
+        niveis: [...perfil.niveis]
+    };
+
+    sessionStorage.setItem(SESSION_KEY, usuarioAtual.usuario);
+    mostrarErroLogin('');
+    exibirPainel();
+    atualizarBadgeUsuario();
+    carregarDados();
+    return true;
+}
+
+function encerrarSessao() {
+    usuarioAtual = null;
+    dadosCompletos = [];
+    dados = [];
+    dadosFiltrados = [];
+    dadosTabela = [];
+    sessionStorage.removeItem(SESSION_KEY);
+
+    mostrarBannerDadosFaltando(false);
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('login-overlay').classList.remove('hidden');
+    document.getElementById('login-usuario').value = '';
+    document.getElementById('login-usuario').focus();
+    mostrarErroLogin('');
+    mostrarAvisoLogin('');
+    if (!listaAcessoCarregada) mostrarFallbackLocal();
+}
+
+function exibirPainel() {
+    document.getElementById('login-overlay').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+}
+
+function mostrarErroLogin(mensagem) {
+    const el = document.getElementById('login-erro');
+    if (!mensagem) {
+        el.classList.add('hidden');
+        el.textContent = '';
+        return;
+    }
+    el.textContent = mensagem;
+    el.classList.remove('hidden');
+}
+
+function atualizarBadgeUsuario() {
+    if (!usuarioAtual) return;
+    document.getElementById('user-session-name').textContent = usuarioAtual.usuario;
+    document.getElementById('user-session-role').textContent = usuarioAtual.admin
+        ? 'Administrador'
+        : rotuloAcessoUsuario(usuarioAtual);
+}
+
+function rotuloAcessoUsuario(perfil) {
+    const colunas = [...new Set(perfil.regras.map(r => r.coluna.trim()))];
+    if (!colunas.length) return 'Acesso restrito';
+    return colunas.join(' · ');
+}
+
+function aplicarRestricaoAcesso(registros) {
+    if (!usuarioAtual) return [];
+    if (usuarioAtual.admin) return [...registros];
+    return registros.filter(registroPermitido);
+}
+
+function registroPermitido(registro) {
+    if (!usuarioAtual?.regras?.length) return false;
+    return usuarioAtual.regras.some(regra => {
+        const valorRegistro = valorCampoRegistro(registro, regra.coluna);
+        return normalizarTexto(valorRegistro) === normalizarTexto(regra.valor);
+    });
+}
+
+function valorCampoRegistro(registro, coluna) {
+    const chave = normalizarChave(coluna);
+    if (registro.campos && Object.prototype.hasOwnProperty.call(registro.campos, chave)) {
+        return registro.campos[chave];
+    }
+    const aliases = {
+        gestao: registro.gestao,
+        'acessos gerentes': registro.acessos_gerentes
+    };
+    if (aliases[chave] !== undefined) return aliases[chave];
+    return registro[chave] ?? '';
+}
+
+function normalizarChave(valor) {
+    return String(valor || '').trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function normalizarTexto(valor) {
+    return String(valor || '').trim().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ');
 }
 
 async function carregarDados() {
+    if (!usuarioAtual) return;
+
     const badge = document.getElementById('loading-badge');
     badge.classList.remove('hidden');
     badge.textContent = 'Carregando...';
+    mostrarBannerDadosFaltando(false);
 
     try {
+        if (dadosCsvLocal) {
+            const texto = decodificarCsv(dadosCsvLocal);
+            processarCsv(texto);
+            return;
+        }
+
         const response = await fetch(CSV_PATH);
         if (!response.ok) {
-            throw new Error(`Não foi possível carregar ${CSV_PATH}. Use um servidor local ou o botão CSV.`);
+            throw new Error(`Não foi possível carregar ${CSV_PATH}.`);
         }
 
         const buffer = await response.arrayBuffer();
@@ -133,7 +469,7 @@ async function carregarDados() {
     } catch (erro) {
         console.error(erro);
         if (!dados.length) {
-            alert(`${erro.message}\n\nDica: execute "npx serve ." na pasta do projeto ou use o botão CSV.`);
+            mostrarBannerDadosFaltando(true);
         }
     } finally {
         badge.classList.add('hidden');
@@ -142,6 +478,8 @@ async function carregarDados() {
 }
 
 function carregarCsvArquivo(file) {
+    if (!usuarioAtual) return;
+
     const badge = document.getElementById('loading-badge');
     badge.classList.remove('hidden');
     badge.textContent = 'Carregando...';
@@ -151,6 +489,7 @@ function carregarCsvArquivo(file) {
         try {
             const texto = decodificarCsv(e.target.result);
             processarCsv(texto);
+            mostrarBannerDadosFaltando(false);
         } catch (erro) {
             console.error(erro);
             alert(`Erro ao processar CSV: ${erro.message}`);
@@ -183,28 +522,26 @@ function processarCsv(texto) {
     const cabecalho = parseCsvLinha(linhas[0]);
     const mapa = mapearColunas(cabecalho);
 
-    dados = linhas.slice(1).map(linha => normalizarRegistro(parseCsvLinha(linha), mapa));
+    dadosCompletos = linhas.slice(1).map(linha => normalizarRegistro(parseCsvLinha(linha), mapa));
+    dados = aplicarRestricaoAcesso(dadosCompletos);
     dadosFiltrados = [...dados];
     dadosTabela = [...dados];
 
-    console.log(`${dados.length} registros carregados de DADOS.csv`);
+    console.log(`${dadosCompletos.length} registros carregados · ${dados.length} liberados para ${usuarioAtual?.usuario || 'sem usuário'}`);
     preencherFiltros();
     definirPeriodoPadrao();
     aplicarFiltros();
 }
 
 function mapearColunas(cabecalho) {
-    const normalizar = s => String(s || '').trim().toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
     const idx = {};
     cabecalho.forEach((col, i) => {
-        idx[normalizar(col)] = i;
+        idx[normalizarChave(col)] = i;
     });
 
     const buscar = (...nomes) => {
         for (const nome of nomes) {
-            const chave = normalizar(nome);
+            const chave = normalizarChave(nome);
             if (idx[chave] !== undefined) return idx[chave];
         }
         return -1;
@@ -228,7 +565,9 @@ function mapearColunas(cabecalho) {
         departamento: buscar('departamento'),
         familia: buscar('família', 'familia'),
         gestao: buscar('gestão', 'gestao'),
-        curva: buscar('curva')
+        curva: buscar('curva'),
+        acessos_gerentes: buscar('ACESSOS GERENTES', 'acessos_gerentes'),
+        todas: idx
     };
 }
 
@@ -259,6 +598,11 @@ function valorColuna(partes, indice) {
 
 function normalizarRegistro(partes, mapa) {
     const status = valorColuna(partes, mapa.status_do_contrato);
+    const campos = {};
+    Object.entries(mapa.todas || {}).forEach(([nome, indice]) => {
+        campos[nome] = valorColuna(partes, indice);
+    });
+
     return {
         nota_fiscal: valorColuna(partes, mapa.nota_fiscal),
         estabelecimento: valorColuna(partes, mapa.estabelecimento),
@@ -277,7 +621,9 @@ function normalizarRegistro(partes, mapa) {
         departamento: valorColuna(partes, mapa.departamento),
         familia: valorColuna(partes, mapa.familia),
         gestao: valorColuna(partes, mapa.gestao),
-        curva: valorColuna(partes, mapa.curva)
+        curva: valorColuna(partes, mapa.curva),
+        acessos_gerentes: valorColuna(partes, mapa.acessos_gerentes),
+        campos
     };
 }
 
