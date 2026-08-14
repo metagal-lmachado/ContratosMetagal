@@ -1443,10 +1443,24 @@ function inicializarBotoesCopiarGrafico() {
     });
 }
 
+function canvasComFundoBranco(canvas) {
+    const copia = document.createElement('canvas');
+    copia.width = canvas.width;
+    copia.height = canvas.height;
+    const ctx = copia.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, copia.width, copia.height);
+    ctx.drawImage(canvas, 0, 0);
+    return copia;
+}
+
 async function copiarGraficoParaClipboard(canvas, btn) {
     try {
         const blob = await new Promise((resolve, reject) => {
-            canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Falha ao gerar imagem'))), 'image/png');
+            canvasComFundoBranco(canvas).toBlob(
+                b => (b ? resolve(b) : reject(new Error('Falha ao gerar imagem'))),
+                'image/png'
+            );
         });
 
         if (navigator.clipboard?.write && window.ClipboardItem) {
