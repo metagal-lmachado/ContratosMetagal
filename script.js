@@ -63,11 +63,22 @@ function inicializarEventos() {
         item.addEventListener('click', e => {
             e.preventDefault();
             mudarPagina(item.dataset.page);
+            fecharMenuMobile();
         });
     });
 
     document.getElementById('btn-collapse-sidebar').addEventListener('click', () => {
+        if (isLayoutMobile()) {
+            fecharMenuMobile();
+            return;
+        }
         document.getElementById('sidebar').classList.toggle('collapsed');
+    });
+
+    document.getElementById('btn-menu')?.addEventListener('click', alternarMenuMobile);
+    document.getElementById('sidebar-backdrop')?.addEventListener('click', fecharMenuMobile);
+    window.addEventListener('resize', () => {
+        if (!isLayoutMobile()) fecharMenuMobile();
     });
 
     document.getElementById('btn-toggle-filters').addEventListener('click', () => {
@@ -1544,6 +1555,30 @@ function mudarPagina(pagina) {
     if (pagina === 'analise') atualizarAnalise();
     if (pagina === 'tabela') atualizarTabelaContratos();
     if (pagina === 'calendario') atualizarCalendario();
+}
+
+function isLayoutMobile() {
+    return window.matchMedia('(max-width: 900px)').matches;
+}
+
+function alternarMenuMobile() {
+    const aberto = document.getElementById('sidebar').classList.contains('open');
+    if (aberto) fecharMenuMobile();
+    else abrirMenuMobile();
+}
+
+function abrirMenuMobile() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebar-backdrop')?.classList.add('visible');
+    document.getElementById('btn-menu')?.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('sidebar-open');
+}
+
+function fecharMenuMobile() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-backdrop')?.classList.remove('visible');
+    document.getElementById('btn-menu')?.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('sidebar-open');
 }
 
 function obterDadosBaseAnalise() {

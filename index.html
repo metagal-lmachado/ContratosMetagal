@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Contratos Metagal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -45,6 +45,7 @@
     </div>
 
     <div class="app hidden" id="app">
+        <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-top">
                 <div class="brand">
@@ -166,6 +167,9 @@
         <main class="main">
             <header class="header">
                 <div class="header-left">
+                    <button type="button" class="btn-icon btn-menu" id="btn-menu" title="Menu" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
                     <h1 class="page-title">Contratos Metagal</h1>
                     <span class="loading-badge hidden" id="loading-badge">Carregando...</span>
                 </div>
