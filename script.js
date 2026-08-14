@@ -4,6 +4,7 @@ const PAGE_SIZE = 20;
 const CSV_PATH = 'DADOS.csv';
 const ACESSO_PATH = 'acesso.csv';
 const SESSION_KEY = 'contratos_metagal_usuario';
+const REMEMBER_KEY = 'contratos_metagal_usuario_lembrado';
 
 const CORES_ESTABELECIMENTO = {
     VIES: '#2d5016',
@@ -46,7 +47,10 @@ let mapaAcessos = {};
 let usuarioAtual = null;
 let dadosCsvLocal = null;
 let listaAcessoCarregada = false;
-let usuarioWindows = '';
+let usuarioIdentificado = '';
+let usuarioIdentificadoExibicao = '';
+let origemIdentidade = '';
+let msalInstance = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     inicializarEventos();
@@ -125,9 +129,13 @@ function inicializarEventos() {
 
     document.getElementById('form-login').addEventListener('submit', e => {
         e.preventDefault();
-        const usuario = usuarioWindows || document.getElementById('login-usuario').value;
-        autenticarUsuario(usuario, { origemWindows: Boolean(usuarioWindows) });
+        const usuario = usuarioIdentificado || document.getElementById('login-usuario').value;
+        autenticarUsuario(usuario, {
+            origemWindows: origemIdentidade === 'windows' || origemIdentidade === 'microsoft'
+        });
     });
+
+    document.getElementById('btn-microsoft')?.addEventListener('click', () => iniciarLoginMicrosoft());
 
     document.getElementById('btn-logout').addEventListener('click', encerrarSessao);
     document.getElementById('input-pasta-projeto').addEventListener('change', e => {
@@ -147,8 +155,8 @@ function inicializarEventos() {
 }
 
 async function iniciarControleAcesso() {
-    usuarioWindows = await obterUsuarioWindows();
-    aplicarIdentidadeWindows(usuarioWindows);
+    await identificarUsuario();
+    aplicarIdentidadeDetectada();
 
     const ok = await carregarAcessos();
     if (!ok) {
@@ -160,7 +168,87 @@ async function iniciarControleAcesso() {
     aposListaAcessoPronta();
 }
 
+function isSitePublicado() {
+    const host = location.hostname;
+    return location.protocol === 'https:'
+        && host !== 'localhost'
+        && host !== '127.0.0.1';
+}
+
+function configMicrosoft() {
+    const cfg = window.AUTH_CONFIG || {};
+    return {
+        clientId: String(cfg.microsoftClientId || cfg.clientId || '').trim(),
+        tenantId: String(cfg.microsoftTenantId || cfg.tenantId || 'metagal.com.br').trim(),
+        domainHint: String(cfg.microsoftDomainHint || cfg.domainHint || 'metagal.com.br').trim()
+    };
+}
+
+function normalizarIdentidade(valor) {
+    let texto = String(valor || '').trim().toLowerCase();
+    if (!texto) return '';
+    if (texto.includes('\\')) texto = texto.split('\\').pop();
+    if (texto.includes('@')) texto = texto.split('@')[0];
+    return texto.trim();
+}
+
+function encontrarPerfil(login) {
+    const bruto = String(login || '').trim().toLowerCase();
+    const curto = normalizarIdentidade(bruto);
+    return mapaAcessos[bruto] || mapaAcessos[curto] || null;
+}
+
+function definirIdentidade(login, origem) {
+    usuarioIdentificadoExibicao = String(login || '').trim();
+    usuarioIdentificado = normalizarIdentidade(usuarioIdentificadoExibicao);
+    origemIdentidade = origem || '';
+}
+
+function obterUsuarioLembrado() {
+    try {
+        return String(localStorage.getItem(REMEMBER_KEY) || sessionStorage.getItem(SESSION_KEY) || '').trim();
+    } catch (_) {
+        return String(sessionStorage.getItem(SESSION_KEY) || '').trim();
+    }
+}
+
+function lembrarUsuario(login) {
+    const curto = normalizarIdentidade(login);
+    if (!curto) return;
+    try { localStorage.setItem(REMEMBER_KEY, curto); } catch (_) { /* modo privado */ }
+    sessionStorage.setItem(SESSION_KEY, curto);
+}
+
+function esquecerUsuario() {
+    try { localStorage.removeItem(REMEMBER_KEY); } catch (_) { /* modo privado */ }
+    sessionStorage.removeItem(SESSION_KEY);
+}
+
+async function identificarUsuario() {
+    const windows = await obterUsuarioWindows();
+    if (windows) {
+        definirIdentidade(windows, 'windows');
+        return;
+    }
+
+    const microsoft = await obterUsuarioMicrosoft();
+    if (microsoft) {
+        definirIdentidade(microsoft, 'microsoft');
+        return;
+    }
+
+    const lembrado = obterUsuarioLembrado();
+    if (lembrado) {
+        definirIdentidade(lembrado, 'lembrado');
+        return;
+    }
+
+    definirIdentidade('', '');
+}
+
 async function obterUsuarioWindows() {
+    if (isSitePublicado()) return '';
+
     try {
         const resposta = await fetch('/api/whoami', { cache: 'no-store' });
         if (resposta.ok) {
@@ -172,44 +260,136 @@ async function obterUsuarioWindows() {
     return String(window.USUARIO_WINDOWS || '').trim();
 }
 
-function aplicarIdentidadeWindows(usuario) {
+function obterInstanciaMsal() {
+    const { clientId, tenantId } = configMicrosoft();
+    if (!clientId || typeof msal === 'undefined') return null;
+    if (msalInstance) return msalInstance;
+
+    msalInstance = new msal.PublicClientApplication({
+        auth: {
+            clientId,
+            authority: `https://login.microsoftonline.com/${tenantId}`,
+            redirectUri: window.location.origin + '/',
+            postLogoutRedirectUri: window.location.origin + '/'
+        },
+        cache: { cacheLocation: 'sessionStorage' }
+    });
+    return msalInstance;
+}
+
+function loginDaContaMicrosoft(account) {
+    return account?.username || account?.idTokenClaims?.preferred_username || account?.name || '';
+}
+
+async function obterUsuarioMicrosoft() {
+    const instancia = obterInstanciaMsal();
+    if (!instancia) return '';
+
+    try {
+        const redirecionamento = await instancia.handleRedirectPromise();
+        if (redirecionamento?.account) {
+            instancia.setActiveAccount(redirecionamento.account);
+            return loginDaContaMicrosoft(redirecionamento.account);
+        }
+
+        const contas = instancia.getAllAccounts();
+        if (contas[0]) {
+            instancia.setActiveAccount(contas[0]);
+            return loginDaContaMicrosoft(contas[0]);
+        }
+
+        const { domainHint } = configMicrosoft();
+        const silencioso = await instancia.ssoSilent({
+            scopes: ['openid', 'profile'],
+            extraQueryParameters: { domain_hint: domainHint }
+        });
+        if (silencioso?.account) {
+            instancia.setActiveAccount(silencioso.account);
+            return loginDaContaMicrosoft(silencioso.account);
+        }
+    } catch (erro) {
+        console.warn('Microsoft SSO silencioso indisponível', erro);
+    }
+
+    return '';
+}
+
+function iniciarLoginMicrosoft() {
+    const instancia = obterInstanciaMsal();
+    if (!instancia) {
+        mostrarErroLogin('A identificação automática pela conta Microsoft ainda não está configurada neste site.');
+        return;
+    }
+
+    const { domainHint } = configMicrosoft();
+    document.getElementById('login-subtitle').textContent = 'Redirecionando para a conta Microsoft...';
+    instancia.loginRedirect({
+        scopes: ['openid', 'profile'],
+        extraQueryParameters: { domain_hint: domainHint }
+    });
+}
+
+function aplicarIdentidadeDetectada() {
     const box = document.getElementById('login-windows');
     const manual = document.getElementById('login-manual');
     const subtitle = document.getElementById('login-subtitle');
     const input = document.getElementById('login-usuario');
     const btn = document.getElementById('btn-login');
+    const btnMicrosoft = document.getElementById('btn-microsoft');
+    const label = document.getElementById('login-windows-label');
+    const temMicrosoft = Boolean(configMicrosoft().clientId && typeof msal !== 'undefined');
 
-    if (usuario) {
-        document.getElementById('login-windows-nome').textContent = usuario;
+    if (usuarioIdentificado) {
+        const rotulos = {
+            microsoft: 'Conta Microsoft',
+            windows: 'Usuário Windows',
+            lembrado: 'Usuário deste computador'
+        };
+        label.textContent = rotulos[origemIdentidade] || 'Usuário identificado';
+        document.getElementById('login-windows-nome').textContent = usuarioIdentificadoExibicao || usuarioIdentificado;
         box.classList.remove('hidden');
         manual.classList.add('hidden');
-        input.value = usuario;
-        subtitle.textContent = 'Acesso validado pelo usuário logado no Windows';
-        btn.textContent = 'Entrar';
+        input.value = usuarioIdentificadoExibicao || usuarioIdentificado;
+        subtitle.textContent = origemIdentidade === 'microsoft'
+            ? 'Acesso validado pela conta Microsoft da Metagal'
+            : origemIdentidade === 'windows'
+                ? 'Acesso validado pelo usuário logado no Windows'
+                : 'Entrando com o usuário lembrado neste computador';
+        btn.classList.remove('hidden');
+        btnMicrosoft.classList.add('hidden');
         return;
     }
 
     box.classList.add('hidden');
     manual.classList.remove('hidden');
-    subtitle.textContent = 'Informe seu usuário para acessar o painel';
-    btn.textContent = 'Entrar';
+    btn.classList.remove('hidden');
+    btnMicrosoft.classList.toggle('hidden', !temMicrosoft);
+    subtitle.textContent = 'Informe seu usuário ou e-mail Metagal. Neste computador o acesso ficará lembrado.';
 }
 
 function aposListaAcessoPronta() {
     if (!listaAcessoCarregada) return;
 
-    if (usuarioWindows) {
-        autenticarUsuario(usuarioWindows, { origemWindows: true });
+    if (usuarioIdentificado) {
+        autenticarUsuario(usuarioIdentificado, {
+            origemWindows: origemIdentidade === 'windows' || origemIdentidade === 'microsoft',
+            silencioso: origemIdentidade === 'lembrado'
+        });
+        if (origemIdentidade === 'lembrado' && !usuarioAtual) {
+            esquecerUsuario();
+            definirIdentidade('', '');
+            aplicarIdentidadeDetectada();
+            mostrarErroLogin('O usuário lembrado neste computador não está na lista de acesso.');
+        }
         return;
     }
 
-    const salvo = sessionStorage.getItem(SESSION_KEY);
-    if (salvo) autenticarUsuario(salvo, { silencioso: true });
+    aplicarIdentidadeDetectada();
 }
 
 function atualizarTextosAcessoPendente() {
-    if (!usuarioWindows) return;
-    mostrarAvisoLogin('Usuário Windows identificado. Carregue os arquivos da pasta para validar o acesso.');
+    if (!usuarioIdentificado) return;
+    mostrarAvisoLogin('Usuário identificado. Carregue os arquivos da pasta para validar o acesso.');
 }
 
 function isFalhaLeituraLocal(erro) {
@@ -219,6 +399,7 @@ function isFalhaLeituraLocal(erro) {
 }
 
 function mostrarFallbackLocal() {
+    if (isSitePublicado()) return;
     document.getElementById('login-local').classList.remove('hidden');
 }
 
@@ -290,8 +471,8 @@ async function carregarArquivosPasta(fileList) {
         mostrarErroLogin('');
         ocultarFallbackLocal();
         mostrarAvisoLogin(dados
-            ? (usuarioWindows
-                ? 'Arquivos carregados. Validando o usuário do Windows...'
+            ? (usuarioIdentificado
+                ? 'Arquivos carregados. Validando o usuário...'
                 : 'Arquivos carregados. Informe seu usuário para entrar.')
             : 'acesso.csv carregado. O DADOS.csv poderá ser selecionado depois.');
 
@@ -350,7 +531,7 @@ function processarAcessoCsv(texto) {
     mapaAcessos = {};
     linhas.slice(1).forEach(linha => {
         const partes = parseCsvLinha(linha);
-        const usuario = (partes[iUser] || '').trim().toLowerCase();
+        const usuario = normalizarIdentidade(partes[iUser] || '');
         const nivel = (partes[iNivel] || '').trim();
         const acesso = (partes[iAcesso] || '').trim();
         if (!usuario) return;
@@ -374,7 +555,7 @@ function processarAcessoCsv(texto) {
 }
 
 function autenticarUsuario(login, opcoes = {}) {
-    const usuario = String(login || '').trim().toLowerCase();
+    const usuario = normalizarIdentidade(login);
     if (!usuario) {
         if (!opcoes.silencioso) mostrarErroLogin('Informe o usuário para acessar o painel.');
         return false;
@@ -388,20 +569,21 @@ function autenticarUsuario(login, opcoes = {}) {
         return false;
     }
 
-    if (usuarioWindows && usuario !== usuarioWindows.toLowerCase()) {
+    if (usuarioIdentificado && usuario !== usuarioIdentificado && (origemIdentidade === 'windows' || origemIdentidade === 'microsoft')) {
         if (!opcoes.silencioso) {
-            mostrarErroLogin(`O acesso deve ser feito com o usuário Windows "${usuarioWindows}".`);
+            mostrarErroLogin(`O acesso deve ser feito com o usuário "${usuarioIdentificadoExibicao || usuarioIdentificado}".`);
         }
         return false;
     }
 
-    const perfil = mapaAcessos[usuario];
+    const perfil = encontrarPerfil(usuario);
     if (!perfil) {
         usuarioAtual = null;
-        sessionStorage.removeItem(SESSION_KEY);
+        esquecerUsuario();
         if (!opcoes.silencioso) {
+            const exibicao = usuarioIdentificadoExibicao || usuarioIdentificado || login;
             mostrarErroLogin(opcoes.origemWindows
-                ? `O usuário Windows "${usuarioWindows}" não está na lista de acesso. Você não pode visualizar os dados do painel.`
+                ? `O usuário "${exibicao}" não está na lista de acesso. Você não pode visualizar os dados do painel.`
                 : 'Usuário sem permissão de acesso. Você não pode visualizar os dados do painel.');
         }
         return false;
@@ -414,7 +596,8 @@ function autenticarUsuario(login, opcoes = {}) {
         niveis: [...perfil.niveis]
     };
 
-    sessionStorage.setItem(SESSION_KEY, usuarioAtual.usuario);
+    lembrarUsuario(perfil.usuario);
+    definirIdentidade(usuarioIdentificadoExibicao || perfil.usuario, origemIdentidade || 'lembrado');
     mostrarErroLogin('');
     exibirPainel();
     atualizarBadgeUsuario();
@@ -428,19 +611,16 @@ function encerrarSessao() {
     dados = [];
     dadosFiltrados = [];
     dadosTabela = [];
-    sessionStorage.removeItem(SESSION_KEY);
+    esquecerUsuario();
+    definirIdentidade('', '');
 
     mostrarBannerDadosFaltando(false);
     document.getElementById('app').classList.add('hidden');
     document.getElementById('login-overlay').classList.remove('hidden');
-    if (!usuarioWindows) {
-        document.getElementById('login-usuario').value = '';
-        document.getElementById('login-usuario').focus();
-    } else {
-        document.getElementById('login-usuario').value = usuarioWindows;
-    }
+    document.getElementById('login-usuario').value = '';
+    aplicarIdentidadeDetectada();
     mostrarErroLogin('');
-    mostrarAvisoLogin(usuarioWindows ? `Identificado como ${usuarioWindows}.` : '');
+    mostrarAvisoLogin('');
     if (!listaAcessoCarregada) {
         mostrarFallbackLocal();
         atualizarTextosAcessoPendente();
@@ -465,9 +645,10 @@ function mostrarErroLogin(mensagem) {
 
 function atualizarBadgeUsuario() {
     if (!usuarioAtual) return;
-    document.getElementById('user-session-name').textContent = usuarioAtual.usuario;
+    document.getElementById('user-session-name').textContent = usuarioIdentificadoExibicao || usuarioAtual.usuario;
+    const origem = origemIdentidade === 'microsoft' ? 'Microsoft' : (origemIdentidade === 'windows' ? 'Windows' : '');
     document.getElementById('user-session-role').textContent = usuarioAtual.admin
-        ? (usuarioWindows ? 'Administrador · Windows' : 'Administrador')
+        ? (origem ? `Administrador · ${origem}` : 'Administrador')
         : rotuloAcessoUsuario(usuarioAtual);
 }
 

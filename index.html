@@ -14,15 +14,16 @@
         <div class="login-card">
             <img src="LOGO.png" alt="metagal" class="login-logo">
             <h1 class="login-title">Contratos Metagal</h1>
-            <p class="login-subtitle" id="login-subtitle">Identificando o usuário do Windows...</p>
+            <p class="login-subtitle" id="login-subtitle">Identificando seu usuário...</p>
             <form id="form-login" class="login-form" autocomplete="on">
                 <div id="login-windows" class="login-windows hidden">
-                    <span class="login-label">Usuário Windows</span>
+                    <span class="login-label" id="login-windows-label">Usuário identificado</span>
                     <strong id="login-windows-nome">—</strong>
                 </div>
-                <div id="login-manual">
-                    <label class="login-label" for="login-usuario">Usuário</label>
-                    <input type="text" id="login-usuario" class="login-input" name="username" autocomplete="username" placeholder="ex.: lmachado">
+                <div id="login-manual" class="hidden">
+                    <label class="login-label" for="login-usuario">Usuário ou e-mail Metagal</label>
+                    <input type="text" id="login-usuario" class="login-input" name="username" autocomplete="username" placeholder="lmachado ou lmachado@metagal.com.br">
+                    <p class="login-hint">Na primeira vez informe seu usuário. Neste computador o acesso ficará lembrado.</p>
                 </div>
                 <p id="login-erro" class="login-erro hidden" role="alert"></p>
                 <p id="login-ok" class="login-ok hidden" role="status"></p>
@@ -37,7 +38,8 @@
                         <input type="file" id="input-acesso-csv" accept=".csv" hidden>
                     </label>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block" id="btn-login">Entrar</button>
+                <button type="button" class="btn btn-primary btn-block hidden" id="btn-microsoft">Entrar com Microsoft</button>
+                <button type="submit" class="btn btn-primary btn-block hidden" id="btn-login">Entrar</button>
             </form>
         </div>
     </div>
@@ -182,7 +184,7 @@
                             <strong id="user-session-name">—</strong>
                             <span id="user-session-role">—</span>
                         </div>
-                        <button type="button" class="btn btn-ghost btn-sm" id="btn-logout">Sair</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="btn-logout">Não sou eu</button>
                     </div>
                 </div>
             </header>
@@ -431,6 +433,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+    <script src="https://alcdn.msauth.net/browser/2.39.0/js/msal-browser.min.js"></script>
+    <script src="auth-config.js"></script>
     <script src="usuario-windows.js"></script>
     <script src="script.js"></script>
 </body>

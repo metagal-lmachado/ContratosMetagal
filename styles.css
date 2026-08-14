@@ -140,6 +140,8 @@ body {
     margin-bottom: 8px;
 }
 
+.login-ok.hidden { display: none; }
+
 .login-windows {
     display: flex;
     flex-direction: column;
@@ -159,6 +161,13 @@ body {
 }
 
 #login-manual.hidden { display: none; }
+
+.login-hint {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin: -4px 0 4px;
+}
 
 .login-local {
     display: flex;
