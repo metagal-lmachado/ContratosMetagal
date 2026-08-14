@@ -46,6 +46,7 @@ let mapaAcessos = {};
 let usuarioAtual = null;
 let dadosCsvLocal = null;
 let listaAcessoCarregada = false;
+let usuarioWindows = '';
 
 document.addEventListener('DOMContentLoaded', async () => {
     inicializarEventos();
@@ -124,8 +125,8 @@ function inicializarEventos() {
 
     document.getElementById('form-login').addEventListener('submit', e => {
         e.preventDefault();
-        const usuario = document.getElementById('login-usuario').value;
-        autenticarUsuario(usuario);
+        const usuario = usuarioWindows || document.getElementById('login-usuario').value;
+        autenticarUsuario(usuario, { origemWindows: Boolean(usuarioWindows) });
     });
 
     document.getElementById('btn-logout').addEventListener('click', encerrarSessao);
@@ -146,14 +147,69 @@ function inicializarEventos() {
 }
 
 async function iniciarControleAcesso() {
+    usuarioWindows = await obterUsuarioWindows();
+    aplicarIdentidadeWindows(usuarioWindows);
+
     const ok = await carregarAcessos();
     if (!ok) {
         mostrarFallbackLocal();
+        atualizarTextosAcessoPendente();
+        return;
+    }
+
+    aposListaAcessoPronta();
+}
+
+async function obterUsuarioWindows() {
+    try {
+        const resposta = await fetch('/api/whoami', { cache: 'no-store' });
+        if (resposta.ok) {
+            const data = await resposta.json();
+            if (data?.usuario) return String(data.usuario).trim();
+        }
+    } catch (_) { /* file:// ou servidor indisponível */ }
+
+    return String(window.USUARIO_WINDOWS || '').trim();
+}
+
+function aplicarIdentidadeWindows(usuario) {
+    const box = document.getElementById('login-windows');
+    const manual = document.getElementById('login-manual');
+    const subtitle = document.getElementById('login-subtitle');
+    const input = document.getElementById('login-usuario');
+    const btn = document.getElementById('btn-login');
+
+    if (usuario) {
+        document.getElementById('login-windows-nome').textContent = usuario;
+        box.classList.remove('hidden');
+        manual.classList.add('hidden');
+        input.value = usuario;
+        subtitle.textContent = 'Acesso validado pelo usuário logado no Windows';
+        btn.textContent = 'Entrar';
+        return;
+    }
+
+    box.classList.add('hidden');
+    manual.classList.remove('hidden');
+    subtitle.textContent = 'Informe seu usuário para acessar o painel';
+    btn.textContent = 'Entrar';
+}
+
+function aposListaAcessoPronta() {
+    if (!listaAcessoCarregada) return;
+
+    if (usuarioWindows) {
+        autenticarUsuario(usuarioWindows, { origemWindows: true });
         return;
     }
 
     const salvo = sessionStorage.getItem(SESSION_KEY);
     if (salvo) autenticarUsuario(salvo, { silencioso: true });
+}
+
+function atualizarTextosAcessoPendente() {
+    if (!usuarioWindows) return;
+    mostrarAvisoLogin('Usuário Windows identificado. Carregue os arquivos da pasta para validar o acesso.');
 }
 
 function isFalhaLeituraLocal(erro) {
@@ -234,12 +290,12 @@ async function carregarArquivosPasta(fileList) {
         mostrarErroLogin('');
         ocultarFallbackLocal();
         mostrarAvisoLogin(dados
-            ? 'Arquivos carregados. Informe seu usuário para entrar.'
-            : 'acesso.csv carregado. Informe seu usuário. O DADOS.csv poderá ser selecionado depois.');
-        document.getElementById('login-usuario').focus();
+            ? (usuarioWindows
+                ? 'Arquivos carregados. Validando o usuário do Windows...'
+                : 'Arquivos carregados. Informe seu usuário para entrar.')
+            : 'acesso.csv carregado. O DADOS.csv poderá ser selecionado depois.');
 
-        const salvo = sessionStorage.getItem(SESSION_KEY);
-        if (salvo) autenticarUsuario(salvo, { silencioso: true });
+        aposListaAcessoPronta();
     } catch (erro) {
         console.error(erro);
         listaAcessoCarregada = false;
@@ -256,8 +312,8 @@ async function carregarAcessoArquivo(file) {
         listaAcessoCarregada = true;
         mostrarErroLogin('');
         ocultarFallbackLocal();
-        mostrarAvisoLogin('Lista de acesso carregada. Informe seu usuário para entrar.');
-        document.getElementById('login-usuario').focus();
+        mostrarAvisoLogin('Lista de acesso carregada. Validando permissão...');
+        aposListaAcessoPronta();
     } catch (erro) {
         console.error(erro);
         listaAcessoCarregada = false;
@@ -332,12 +388,21 @@ function autenticarUsuario(login, opcoes = {}) {
         return false;
     }
 
+    if (usuarioWindows && usuario !== usuarioWindows.toLowerCase()) {
+        if (!opcoes.silencioso) {
+            mostrarErroLogin(`O acesso deve ser feito com o usuário Windows "${usuarioWindows}".`);
+        }
+        return false;
+    }
+
     const perfil = mapaAcessos[usuario];
     if (!perfil) {
         usuarioAtual = null;
         sessionStorage.removeItem(SESSION_KEY);
         if (!opcoes.silencioso) {
-            mostrarErroLogin('Usuário sem permissão de acesso. Você não pode visualizar os dados do painel.');
+            mostrarErroLogin(opcoes.origemWindows
+                ? `O usuário Windows "${usuarioWindows}" não está na lista de acesso. Você não pode visualizar os dados do painel.`
+                : 'Usuário sem permissão de acesso. Você não pode visualizar os dados do painel.');
         }
         return false;
     }
@@ -368,11 +433,18 @@ function encerrarSessao() {
     mostrarBannerDadosFaltando(false);
     document.getElementById('app').classList.add('hidden');
     document.getElementById('login-overlay').classList.remove('hidden');
-    document.getElementById('login-usuario').value = '';
-    document.getElementById('login-usuario').focus();
+    if (!usuarioWindows) {
+        document.getElementById('login-usuario').value = '';
+        document.getElementById('login-usuario').focus();
+    } else {
+        document.getElementById('login-usuario').value = usuarioWindows;
+    }
     mostrarErroLogin('');
-    mostrarAvisoLogin('');
-    if (!listaAcessoCarregada) mostrarFallbackLocal();
+    mostrarAvisoLogin(usuarioWindows ? `Identificado como ${usuarioWindows}.` : '');
+    if (!listaAcessoCarregada) {
+        mostrarFallbackLocal();
+        atualizarTextosAcessoPendente();
+    }
 }
 
 function exibirPainel() {
@@ -395,7 +467,7 @@ function atualizarBadgeUsuario() {
     if (!usuarioAtual) return;
     document.getElementById('user-session-name').textContent = usuarioAtual.usuario;
     document.getElementById('user-session-role').textContent = usuarioAtual.admin
-        ? 'Administrador'
+        ? (usuarioWindows ? 'Administrador · Windows' : 'Administrador')
         : rotuloAcessoUsuario(usuarioAtual);
 }
 

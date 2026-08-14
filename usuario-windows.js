@@ -1,0 +1,2 @@
+window.USUARIO_WINDOWS = "";
+window.USUARIO_WINDOWS_DOMINIO = "";

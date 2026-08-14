@@ -140,7 +140,25 @@ body {
     margin-bottom: 8px;
 }
 
-.login-ok.hidden { display: none; }
+.login-windows {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 12px 14px;
+    background: var(--green-pale);
+    border: 1px solid rgba(76, 175, 80, 0.35);
+    border-radius: 8px;
+}
+
+.login-windows.hidden { display: none; }
+
+.login-windows strong {
+    font-size: 1.05rem;
+    color: var(--green-dark);
+}
+
+#login-manual.hidden { display: none; }
 
 .login-local {
     display: flex;
