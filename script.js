@@ -1273,7 +1273,9 @@ function atualizarGraficoMensal() {
         const data = parseDataFiscal(d.data_fiscal);
         if (!data) return;
         const chave = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-        meses[chave] = (meses[chave] || 0) + d.preco_total_linha;
+        if (!meses[chave]) meses[chave] = { valor: 0, registros: [] };
+        meses[chave].valor += d.preco_total_linha;
+        meses[chave].registros.push(d);
     });
 
     const chaves = Object.keys(meses).sort();
@@ -1282,45 +1284,109 @@ function atualizarGraficoMensal() {
         const nome = new Date(+ano, +mes - 1).toLocaleString('pt-BR', { month: 'short', year: 'numeric' });
         return nome.charAt(0).toUpperCase() + nome.slice(1);
     });
-    const valores = chaves.map(k => meses[k]);
+    const valores = chaves.map(k => meses[k].valor);
+    const prazos = chaves.map(k => calcularPrazoMedioPonderado(meses[k].registros));
 
     destruirChart('mensal');
     charts.mensal = new Chart(document.getElementById('chart-mensal').getContext('2d'), {
         type: 'line',
         data: {
             labels,
-            datasets: [{
-                label: 'Valor',
-                data: valores,
-                borderColor: '#1b3d1b',
-                backgroundColor: 'rgba(76, 175, 80, 0.15)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.35,
-                pointRadius: 5,
-                pointBackgroundColor: '#1b3d1b',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointHoverRadius: 7
-            }]
+            datasets: [
+                {
+                    label: 'Valor',
+                    data: valores,
+                    yAxisID: 'y',
+                    borderColor: '#1b3d1b',
+                    backgroundColor: 'rgba(76, 175, 80, 0.15)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#1b3d1b',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 7,
+                    order: 2
+                },
+                {
+                    label: 'Prazo médio',
+                    data: prazos,
+                    yAxisID: 'yPrazo',
+                    borderColor: '#f59e0b',
+                    backgroundColor: '#f59e0b',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.35,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#f59e0b',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 7,
+                    spanGaps: true,
+                    order: 1
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { display: false },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        boxWidth: 8,
+                        padding: 16,
+                        font: { weight: '600', size: 12 }
+                    }
+                },
                 datalabels: { display: false },
                 tooltip: {
-                    callbacks: { label: ctx => formatarMoeda(ctx.raw) }
+                    callbacks: {
+                        label: ctx => {
+                            if (ctx.dataset.yAxisID === 'yPrazo') {
+                                return `Prazo médio: ${formatarPrazo(ctx.raw)}`;
+                            }
+                            return `Valor: ${formatarMoeda(ctx.raw)}`;
+                        }
+                    }
                 }
             },
             scales: {
                 y: {
+                    position: 'left',
                     beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Valor (R$)',
+                        color: '#1b3d1b',
+                        font: { weight: '600', size: 12 }
+                    },
                     ticks: {
+                        color: '#1b3d1b',
                         callback: v => 'R$ ' + Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 })
                     },
                     grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                yPrazo: {
+                    position: 'right',
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Prazo médio (dias)',
+                        color: '#d97706',
+                        font: { weight: '600', size: 12 }
+                    },
+                    ticks: {
+                        color: '#d97706',
+                        callback: v => `${Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} dias`
+                    },
+                    grid: { drawOnChartArea: false }
                 },
                 x: { grid: { display: false } }
             },
